@@ -1,0 +1,2620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; upgrade-insecure-requests;">
+    <meta name="referrer" content="no-referrer">
+    <title>LNHS Guidance Action Plan & Student Inventory Manager</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS CDN for Excel Import/Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Firebase Compat SDK CDNs (Classic Namespace for Single File robust execution) -->
+    <script src="https://www.gstatic.com/firebasejs/11.3.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.3.1/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.3.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Disable text selection globally to prevent copying */
+            -webkit-user-select: none; 
+            -moz-user-select: none; 
+            -ms-user-select: none; 
+            user-select: none;
+        }
+        
+        /* Allow text selection only inside input fields and textareas */
+        input, textarea, select {
+            -webkit-user-select: auto;
+            -moz-user-select: auto;
+            -ms-user-select: auto;
+            user-select: auto;
+        }
+        
+        /* Strict CSS rules for standard A4 1-page paper printout */
+        @media print {
+            @page {
+                size: A4;
+                margin: 8mm 12mm 8mm 12mm; /* Minimal margins to fit everything on 1 page */
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            body * {
+                visibility: hidden;
+            }
+            #printable-form, #printable-form * {
+                visibility: visible;
+            }
+            #printable-form {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            /* Global spacing overrides for print mode */
+            .print-tight {
+                padding-top: 0.1rem !important;
+                padding-bottom: 0.1rem !important;
+                margin-top: 0.1rem !important;
+                margin-bottom: 0.1rem !important;
+            }
+            .print-tight-gap {
+                gap: 0.25rem !important;
+            }
+            .print-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+            .print-border {
+                border-color: #000000 !important;
+            }
+            /* Shrink form container height slightly to secure single-page output */
+            #printable-form {
+                max-height: 275mm !important;
+                overflow: hidden !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col">
+
+    <!-- ================== ROLE SELECTOR GATEWAY (MODAL OVERLAY) ================== -->
+    <div id="portal-gateway" class="fixed inset-0 bg-slate-950/95 flex items-center justify-center z-50 p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6 border border-slate-200">
+            <!-- Header Identity -->
+            <div class="text-center space-y-2">
+                <img src="ae2c1439-2702-4be7-82c6-48d10de693d6.jpg" alt="LNHS Logo" class="w-20 h-20 mx-auto rounded-full object-cover shadow-md border border-slate-200" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=100&auto=format&fit=crop&q=60';">
+                <h2 class="font-extrabold text-xl text-slate-900 tracking-tight leading-tight">LALAWAN NATIONAL HIGH SCHOOL</h2>
+                <p class="text-xs text-slate-500 font-medium">Guidance Portal & Student Record Systems <span class="text-blue-600 font-bold ml-1">v2.3.8</span></p>
+            </div>
+
+            <!-- Portal Buttons -->
+            <div id="role-selection-view" class="space-y-3">
+                <button onclick="window.selectPortal('student')" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-md">
+                    <i data-lucide="user-edit" class="w-5 h-5"></i>
+                    Student Form Portal
+                </button>
+                <button onclick="window.showAdminPasswordInput()" class="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl flex items-center justify-center gap-2.5 transition-all border border-slate-200">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    Guidance Admin Sign-In
+                </button>
+            </div>
+
+            <!-- Auth Verification Panel -->
+            <div id="admin-auth-view" class="space-y-4 hidden">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Enter Administrator Password</label>
+                    <div class="relative">
+                        <input type="password" id="admin-passkey" placeholder="••••••••" class="w-full text-sm p-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none">
+                        <button type="button" onclick="window.togglePasswordVisibility('admin-passkey', 'eye-icon-login')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            <i id="eye-icon-login" data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.backToRoleSelector()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm">
+                        Back
+                    </button>
+                    <button onclick="window.loginAdmin()" class="flex-1 py-2.5 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-lg text-sm">
+                        Sign In
+                    </button>
+                </div>
+                <div class="text-center">
+                    <button onclick="window.forgotPassword()" class="text-xs text-blue-600 hover:text-blue-800 hover:underline font-semibold focus:outline-none">
+                        Forgot Password?
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credentials Modal -->
+    <div id="change-password-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-100 text-blue-800 rounded-full">
+                    <i data-lucide="key-round" class="w-6 h-6"></i>
+                </div>
+                <h4 class="font-extrabold text-slate-900 text-lg">Change Admin Password</h4>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Current Password</label>
+                    <div class="relative">
+                        <input type="password" id="change-pass-current" placeholder="••••••••" class="w-full text-sm p-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none">
+                        <button type="button" onclick="window.togglePasswordVisibility('change-pass-current', 'eye-icon-current')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            <i id="eye-icon-current" data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">New Password</label>
+                    <div class="relative">
+                        <input type="password" id="change-pass-new" placeholder="••••••••" class="w-full text-sm p-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none">
+                        <button type="button" onclick="window.togglePasswordVisibility('change-pass-new', 'eye-icon-new')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            <i id="eye-icon-new" data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" id="change-pass-confirm" placeholder="••••••••" class="w-full text-sm p-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none">
+                        <button type="button" onclick="window.togglePasswordVisibility('change-pass-confirm', 'eye-icon-confirm')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            <i id="eye-icon-confirm" data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2 justify-end pt-2">
+                <button onclick="window.closeChangePasswordModal()" class="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-lg">Cancel</button>
+                <button onclick="window.submitChangePassword()" class="py-2 px-4 bg-blue-900 hover:bg-blue-950 text-white font-semibold text-sm rounded-lg">Save Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header class="bg-blue-900 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-1 rounded-full text-blue-900 shadow-inner flex items-center justify-center w-14 h-14 overflow-hidden">
+                    <img src="ae2c1439-2702-4be7-82c6-48d10de693d6.jpg" alt="LNHS Logo" class="w-12 h-12 rounded-full object-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=100&auto=format&fit=crop&q=60';">
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">LALAWAN NATIONAL HIGH SCHOOL</h1>
+                    <p class="text-xs text-blue-200">Guidance & Counseling Office • SY 2026–2027 <span class="opacity-75 ml-1">| v2.3.8</span></p>
+                </div>
+            </div>
+            
+            <!-- Connection Status & Role Lock Controls -->
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                <div id="db-status" class="no-print">
+                    <span class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full font-semibold border border-emerald-800">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Local Drive Active
+                    </span>
+                </div>
+                <div class="flex gap-2 no-print">
+                    <!-- Change Password (Admin Only) -->
+                    <button id="btn-change-password" onclick="window.openChangePasswordModal()" class="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors hidden">
+                        <i data-lucide="key" class="w-3.5 h-3.5 text-blue-400"></i> Change Password
+                    </button>
+                    <!-- Lock Portal -->
+                    <button onclick="window.logout()" class="py-1.5 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="lock" class="w-3.5 h-3.5"></i> Lock Portal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs (Only Visible to Admin) -->
+    <nav id="admin-nav" class="bg-white border-b border-slate-200 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto">
+            <button onclick="window.switchTab('dashboard')" id="tab-dashboard" class="py-4 px-2 font-medium text-blue-600 border-b-2 border-blue-600 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+                June Action Plan Checklist
+            </button>
+            <button onclick="window.switchTab('form')" id="tab-form" class="py-4 px-2 font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                Interactive Forms Hub
+            </button>
+            <button onclick="window.switchTab('registry')" id="tab-registry" class="py-4 px-2 font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap">
+                <i data-lucide="database" class="w-4 h-4"></i>
+                Digital Records Database
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-6 w-full">
+
+        <!-- ================== TAB 1: ACTION PLAN CHECKLIST ================== -->
+        <section id="pane-dashboard" class="space-y-6">
+            <div class="bg-gradient-to-r from-blue-800 to-indigo-950 rounded-xl p-6 text-white shadow-md relative overflow-hidden">
+                <div class="absolute right-0 top-0 translate-x-10 -translate-y-10 opacity-10">
+                    <i data-lucide="award" class="w-80 h-80"></i>
+                </div>
+                <span class="bg-blue-500/30 text-blue-200 text-xs uppercase tracking-widest px-3 py-1 rounded-full font-bold">Term 1: June 2026 Kickoff</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold mt-2">Start of Classes & Student Intake Phase</h2>
+                <p class="text-slate-300 mt-2 max-w-2xl text-sm sm:text-base">
+                    Ensure all core objectives from the Lalawan NHS Guidance Action Plan are met efficiently. All inventory inputs are backed up automatically to your local browser storage.
+                </p>
+            </div>
+
+            <!-- June Checklist Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
+                <!-- Task 1 -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">Target: Jun-Jul 2026</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">1. Individual Student Inventory</h3>
+                        <p class="text-slate-600 text-sm mb-4 leading-relaxed">
+                            Profile newly enrolled JHS & SHS students (Grade 7, Grade 11, Transferees) with a special focus on inclusive tracking (Learners with Disabilities, IP, and Muslim learners).
+                        </p>
+                        <div class="space-y-2.5">
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500" checked>
+                                <span class="text-slate-700">Print Student Inventory Forms (1-Page)</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Set up enrollment desks for collection</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Identify inclusive learning subgroups early</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Encode student details in Digital Registry</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button onclick="window.switchTab('form')" class="mt-6 w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition-colors">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Generate Form
+                    </button>
+                </div>
+
+                <!-- Task 2 -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">Target: June 2026</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">2. Psychosocial First Aid (MHPSS)</h3>
+                        <p class="text-slate-600 text-sm mb-4 leading-relaxed">
+                            Support student emotional well-being back to school. Train class advisers on grounding & basic coping activities for classroom implementation.
+                        </p>
+                        <div class="space-y-2.5">
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Download free DepEd digital core care modules</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Conduct short orientation for JHS & SHS Advisers</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Distribute classroom mental health and wellness posters</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Collect activity photo documentation / sample outputs</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t pt-4 border-slate-100 text-xs text-slate-500 italic flex items-center gap-1">
+                        <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i> Sourced directly from free DepEd digital resource portals.
+                    </div>
+                </div>
+
+                <!-- Task 3 -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">Target: Jun-Jul 2026</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2">3. Child Protection & Safety Orientation</h3>
+                        <p class="text-slate-600 text-sm mb-4 leading-relaxed">
+                            Orient students and parents on rights, bullying definitions, positive discipline guidelines, and official reporting channels.
+                        </p>
+                        <div class="space-y-2.5">
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Draft / Print Child Protection Policy brochures</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Set up gymnasium schedules (JHS and SHS separate)</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">Distribute pamphlets during 1st Parents' Assembly</span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-700">File attendance logs and signed receipts</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t pt-4 border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                        <span>Fund Source: GAD / MOOE Allocations</span>
+                        <span class="font-semibold text-blue-600">Cost-Mitigation Shared Printing</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Program Summary Section -->
+            <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-blue-600"></i> Term 1 Milestone Goals & MOVs
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-slate-600">
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                        <strong class="text-slate-900 block mb-1">Target Audience</strong>
+                        Grade 7 & 11, Transferees, and their Parents. Special profiling for Learners with Disabilities, IP, and Muslim learners.
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                        <strong class="text-slate-900 block mb-1">Means of Verification (MOVs)</strong>
+                        Completed physical records, secure database entry log, inclusive subgroup counts, attendance rosters, event photos.
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                        <strong class="text-slate-900 block mb-1">Storage Protocol</strong>
+                        Locked cabinet in the Guidance Office for physical forms. Password-secured off-grid computer for digital registry.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================== TAB 2: INTERACTIVE FORMS HUB ================== -->
+        <section id="pane-form" class="hidden grid grid-cols-1 xl:grid-cols-12 gap-8 font-sans">
+            <!-- Sidebar Form Controls -->
+            <div class="xl:col-span-4 space-y-6 no-print h-[calc(100vh-12rem)] overflow-y-auto pr-2">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
+                    <div id="form-selector-container">
+                        <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                            <i data-lucide="layers" class="text-blue-600 w-5 h-5"></i>
+                            Select Guidance Form
+                        </h3>
+                        <select id="form-selector" onchange="window.changeActiveForm()" class="mt-2 w-full text-sm p-3 bg-blue-50 text-blue-900 border border-blue-200 font-bold rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="inventory">Form A: Individual Student Inventory</option>
+                            <option value="referral">Form B: Counselor Referral & Intake Slip</option>
+                            <option value="incident">Form C: Child Protection Incident Report</option>
+                            <option value="evaluation">Form D: Program Feedback Survey</option>
+                        </select>
+                    </div>
+
+                    <div id="form-helper-buttons" class="flex gap-2">
+                        <button onclick="window.populateActiveFormSample()" class="flex-1 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded transition-colors flex items-center justify-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Load Sample
+                        </button>
+                        <button onclick="window.clearActiveForm()" class="flex-1 py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded transition-colors flex items-center justify-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear Blank
+                        </button>
+                    </div>
+
+                    <!-- DYNAMIC INPUT SEGMENT FOR FORM A: INVENTORY -->
+                    <div id="inputs-inventory" class="space-y-4">
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="user" class="w-3.5 h-3.5"></i> I. Student Demographics
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Student Full Name</label>
+                            <input type="text" id="input-fullname" oninput="window.updateFormOutput()" placeholder="Surname, First Name M.I." class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Student LRN (12 Digits)</label>
+                            <input type="text" id="input-lrn" oninput="window.updateFormOutput()" placeholder="Enter 12-digit LRN" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Grade Level</label>
+                                <select id="input-grade" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                    <option value="">(Blank)</option>
+                                    <option value="Grade 7">Grade 7</option>
+                                    <option value="Grade 8">Grade 8</option>
+                                    <option value="Grade 9">Grade 9</option>
+                                    <option value="Grade 10">Grade 10</option>
+                                    <option value="Grade 11">Grade 11</option>
+                                    <option value="Grade 12">Grade 12</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Section</label>
+                                <input type="text" id="input-section" oninput="window.updateFormOutput()" placeholder="Section Name" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Birthdate</label>
+                                <input type="date" id="input-dob" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Sex</label>
+                                <select id="input-sex" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                    <option value="">(Blank)</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Target Classification</label>
+                            <select id="input-status" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="">(Blank)</option>
+                                <option value="Grade 7">Grade 7</option>
+                                <option value="Grade 8">Grade 8</option>
+                                <option value="Grade 9">Grade 9</option>
+                                <option value="Grade 10">Grade 10</option>
+                                <option value="Grade 11">Grade 11</option>
+                                <option value="Grade 12">Grade 12</option>
+                            </select>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 space-y-1.5">
+                            <span class="block text-[11px] font-bold text-slate-700 uppercase tracking-wide">Inclusive Trackers</span>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-disability" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500 font-sans">
+                                <span>Learner with Disability</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-ip" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500 font-sans">
+                                <span>IP Learner</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-muslim" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500 font-sans">
+                                <span>Muslim Learner</span>
+                            </label>
+                        </div>
+
+                        <!-- Family Background & Household Dynamics -->
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="users" class="w-3.5 h-3.5"></i> II. Family & Guardian Profile
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Father's Name</label>
+                            <input type="text" id="input-father" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Mother's Name</label>
+                            <input type="text" id="input-mother" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Legal Guardian (If not parents)</label>
+                            <input type="text" id="input-guardian" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Emergency Contact Number</label>
+                            <input type="text" id="input-contact" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Living Arrangement</label>
+                            <select id="input-living" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="">(Select Arrangement)</option>
+                                <option value="Living with Both Parents">Living with Both Parents</option>
+                                <option value="Living with Mother only">Living with Mother only</option>
+                                <option value="Living with Father only">Living with Father only</option>
+                                <option value="Living with Relatives / Guardians">Living with Relatives / Guardians</option>
+                                <option value="Boarding / Lodging">Boarding / Lodging House</option>
+                            </select>
+                        </div>
+
+                        <!-- Socio-Economic Profile -->
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="wallet" class="w-3.5 h-3.5"></i> III. Socio-Economic Profile
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Primary Source of Income</label>
+                            <input type="text" id="input-income-source" oninput="window.updateFormOutput()" placeholder="e.g., Farming, Trading, Public Employee" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer py-1 font-sans">
+                            <input type="checkbox" id="input-4ps" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                            <span class="font-semibold">Pantawid Pamilya (4Ps) Beneficiary</span>
+                        </div>
+
+                        <!-- Medical & Accommodations -->
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="heart" class="w-3.5 h-3.5"></i> IV. Medical History & Needs
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Medical Diagnoses / Illnesses</label>
+                            <input type="text" id="input-medical" oninput="window.updateFormOutput()" placeholder="e.g., Asthma, Diabetes, or None" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Required Classroom Accommodations</label>
+                            <input type="text" id="input-allergies" oninput="window.updateFormOutput()" placeholder="e.g., Front row seating, wheelchair access, none" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+
+                        <!-- Career Aspirations -->
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> V. Personal & Career Goals
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Career Goal / Preferred Aspiration</label>
+                            <input type="text" id="input-aspiration" oninput="window.updateFormOutput()" placeholder="e.g., Teacher, Nurse, Agriculturist" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+
+                        <!-- Risk Screening Indicators -->
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> VI. Risk Screening Factors
+                        </h4>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 space-y-2 font-sans">
+                            <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-risk-absent" onchange="window.updateFormOutput()" class="mt-0.5 rounded text-blue-600 focus:ring-blue-500">
+                                <span>History of Chronic Absenteeism</span>
+                            </label>
+                            <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-risk-family" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Challenging Family Situations</span>
+                            </label>
+                            <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-risk-academic" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>History of Academic Failures</span>
+                            </label>
+                            <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-risk-stress" onchange="window.updateFormOutput()" class="mt-0.5 rounded text-blue-600 focus:ring-blue-500">
+                                <span>Extreme Stress / Anxiety</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- DYNAMIC INPUT SEGMENT FOR FORM B: REFERRAL SLIP -->
+                    <div id="inputs-referral" class="space-y-4 hidden">
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="send" class="w-3.5 h-3.5"></i> I. Referral Information
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Referred Student Name</label>
+                            <input type="text" id="input-ref-student" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 font-sans">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Grade & Section</label>
+                                <input type="text" id="input-ref-gradesec" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Date of Referral</label>
+                                <input type="date" id="input-ref-date" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 font-sans">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Referring Person</label>
+                                <input type="text" id="input-ref-by" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Relationship / Role</label>
+                                <input type="text" id="input-ref-relationship" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Reason for Referral</label>
+                            <select id="input-ref-reason" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="Academic Decline">Academic Decline</option>
+                                <option value="Chronic Absenteeism">Chronic Absenteeism</option>
+                                <option value="Behavioral Concern">Behavioral Concern</option>
+                                <option value="Emotional Distress">Emotional Distress</option>
+                                <option value="Peer Conflict">Peer Conflict</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Brief Description of Problem</label>
+                            <textarea id="input-ref-remarks" oninput="window.updateFormOutput()" rows="2" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Prior Interventions Conducted by Referrer</label>
+                            <textarea id="input-ref-prior" oninput="window.updateFormOutput()" rows="2" placeholder="e.g., Talked to student, Called parent" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+
+                        <!-- Counselor Actions -->
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="check-square" class="w-3.5 h-3.5"></i> II. Counselor Action Log
+                        </h4>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 space-y-1.5 font-sans">
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-act-interview" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Diagnostic Interview</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-act-parent" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Parent-Counselor Conference</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-act-home" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Home Visitation Conducted</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-act-referral" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Referred to External Specialist</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Consultation Recommendations</label>
+                            <textarea id="input-ref-recommendations" oninput="window.updateFormOutput()" rows="2" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Follow-Up Evaluation Date</label>
+                            <input type="date" id="input-ref-followup" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                    </div>
+
+                    <!-- DYNAMIC INPUT SEGMENT FOR FORM C: INCIDENT REPORT -->
+                    <div id="inputs-incident" class="space-y-4 hidden">
+                        <h4 class="text-xs font-bold text-red-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="alert-octagon" class="w-3.5 h-3.5"></i> I. Incident Details
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Complainant / Reporter</label>
+                            <input type="text" id="input-inc-reporter" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Alleged Victim</label>
+                            <input type="text" id="input-inc-victim" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Alleged Perpetrator</label>
+                            <input type="text" id="input-inc-perpetrator" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Type of Incident / Violation</label>
+                            <select id="input-inc-type" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="Physical Bullying">Physical Bullying</option>
+                                <option value="Verbal Defamation / Teasing">Verbal Defamation / Teasing</option>
+                                <option value="Cyberbullying / Online Abuse">Cyberbullying / Online Abuse</option>
+                                <option value="Social Exclusion / Discrimination">Social Exclusion / Discrimination</option>
+                                <option value="Harassment / Intimidation">Harassment / Intimidation</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Date & Time of Occurrence</label>
+                            <input type="datetime-local" id="input-inc-date" oninput="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Detailed Incident Narrative</label>
+                            <textarea id="input-inc-narrative" oninput="window.updateFormOutput()" rows="2" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans"></textarea>
+                        </div>
+
+                        <!-- SECTION II COMPLIANT INPUTS FOR FORM C -->
+                        <h4 class="text-xs font-bold text-red-800 uppercase tracking-wider pt-2 flex items-center gap-1.5">
+                            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> II. Interventions & Resolutions
+                        </h4>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 space-y-1.5 font-sans">
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-inc-parent" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500 font-sans">
+                                <span>Parent Confrontation</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-inc-behavioral" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500 font-sans">
+                                <span>Guidance Behavioral Plan</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="input-inc-wcpc" onchange="window.updateFormOutput()" class="rounded text-blue-600 focus:ring-blue-500 font-sans">
+                                <span>WCPC / Barangay Referral</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Mandated Sanctions / Recovery Resolutions</label>
+                            <textarea id="input-inc-resolution" oninput="window.updateFormOutput()" rows="2" placeholder="Detail action steps here..." class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- DYNAMIC INPUT SEGMENT FOR FORM D: SURVEY EVALUATION -->
+                    <div id="inputs-evaluation" class="space-y-4 hidden">
+                        <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="star" class="w-3.5 h-3.5"></i> Program Feedback Metrics
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Respondent Name / Designation</label>
+                            <input type="text" id="input-eval-name" oninput="window.updateFormOutput()" placeholder="Student, Teacher, or Parent Name" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Affiliation / Group</label>
+                            <select id="input-eval-group" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="Student">Student</option>
+                                <option value="Faculty / Teacher">Faculty / Teacher</option>
+                                <option value="Parent / Guardian">Parent / Guardian</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Counseling Quality Rating</label>
+                            <select id="input-eval-q1" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="5 - Outstanding">5 - Outstanding</option>
+                                <option value="4 - Very Satisfactory">4 - Very Satisfactory</option>
+                                <option value="3 - Satisfactory">3 - Satisfactory</option>
+                                <option value="2 - Unsatisfactory">2 - Unsatisfactory</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Psychosocial Support Rating</label>
+                            <select id="input-eval-q2" onchange="window.updateFormOutput()" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans">
+                                <option value="5 - Outstanding">5 - Outstanding</option>
+                                <option value="4 - Very Satisfactory">4 - Very Satisfactory</option>
+                                <option value="3 - Satisfactory">3 - Satisfactory</option>
+                                <option value="2 - Unsatisfactory">2 - Unsatisfactory</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Qualitative Feedback (Comments)</label>
+                            <textarea id="input-eval-comments" oninput="window.updateFormOutput()" rows="3" class="w-full text-sm p-2 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4 space-y-2">
+                        <!-- Student Specific Excel Controls Container -->
+                        <div id="student-excel-controls" class="space-y-2 hidden">
+                            <div class="flex gap-2">
+                                <button onclick="window.exportDatabaseToDrive()" class="flex-1 py-2 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition-colors border border-blue-200 shadow-sm">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Excel
+                                </button>
+                                <button onclick="window.triggerImportFile()" class="flex-1 py-2 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition-colors border border-emerald-200 shadow-sm">
+                                    <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Excel
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="btn-print-form" onclick="window.triggerPrint()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm flex items-center justify-center gap-2 transition-colors shadow-sm">
+                            <i data-lucide="printer" class="w-4 h-4"></i> Print Form (1-Page PDF)
+                        </button>
+                        <button onclick="window.saveActiveFormToRegistry()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition-colors font-sans">
+                            <i data-lucide="save" class="w-4 h-4"></i> Save to Digital Registry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Canvas: Printable 1-Page Form (A4 aspect-ratio emulation) -->
+            <div class="xl:col-span-8">
+                <!-- Outer styling container to resemble a real standard piece of paper -->
+                <div class="bg-white border border-slate-300 shadow-lg p-6 rounded-lg max-w-[8.5in] mx-auto overflow-hidden text-black transition-all" id="printable-form">
+                    
+                    <!-- Header -->
+                    <div class="text-center border-b-2 border-black pb-1.5 print-tight">
+                        <span class="text-xs tracking-wider uppercase font-semibold text-slate-800">Republic of the Philippines</span>
+                        <h1 class="text-md font-extrabold uppercase leading-tight text-slate-900 print-tight">Department of Education</h1>
+                        <p class="text-[10px] text-slate-600 leading-none">Region X Northern Mindanao • Division of Malaybalay City</p>
+                        <h2 class="text-xs font-extrabold text-blue-900 mt-0.5 uppercase print-tight">LALAWAN NATIONAL HIGH SCHOOL</h2>
+                        <span class="text-[10px] text-slate-500 block leading-none">P-4 Lalawan, Linabo, Malaybalay City, Bukidnon</span>
+                        
+                        <!-- DYNAMIC SUB-HEADER -->
+                        <div id="canvas-form-title" class="text-xs font-bold bg-slate-100 py-1 rounded uppercase mt-1.5 text-slate-800 tracking-wide print-tight border print-border font-sans">
+                            Guidance and Counseling Individual Student Inventory Form
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-0.5 leading-none">School Year 2026 – 2027</div>
+                    </div>
+
+                    <!-- ================== TEMPLATE A: STUDENT INVENTORY ================== -->
+                    <div id="template-inventory" class="space-y-2 mt-2 print-tight">
+                        <!-- Demographics -->
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider font-sans">I. Student Demographics & Enrollment Info</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs print-grid font-sans">
+                            <div class="md:col-span-2">
+                                <span class="text-slate-600 font-medium block text-[9px] leading-tight">Full Student Name:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-fullname">____________________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px] leading-tight">Student LRN:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-lrn">__________________________</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs font-sans">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px] leading-tight">Grade Level:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-grade">____________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px] leading-tight">Section:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-section">____________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px] leading-tight">Sex:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-sex">____________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px] leading-tight">Date of Birth:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-dob">____________________</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs pt-0.5">
+                            <span class="text-slate-600 font-semibold block text-[9px] mb-1">Target Client Classification:</span>
+                            <div class="grid grid-cols-6 gap-2">
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" id="chk-g7" class="rounded text-black focus:ring-0 border-black w-3 h-3">
+                                    <span class="text-[9px]">Grade 7</span>
+                                </label>
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" id="chk-g8" class="rounded text-black focus:ring-0 border-black w-3 h-3">
+                                    <span class="text-[9px]">Grade 8</span>
+                                </label>
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" id="chk-g9" class="rounded text-black focus:ring-0 border-black w-3 h-3">
+                                    <span class="text-[9px]">Grade 9</span>
+                                </label>
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" id="chk-g10" class="rounded text-black focus:ring-0 border-black w-3 h-3">
+                                    <span class="text-[9px]">Grade 10</span>
+                                </label>
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" id="chk-g11" class="rounded text-black focus:ring-0 border-black w-3 h-3">
+                                    <span class="text-[9px]">Grade 11</span>
+                                </label>
+                                <label class="flex items-center gap-1">
+                                    <input type="checkbox" id="chk-g12" class="rounded text-black focus:ring-0 border-black w-3 h-3">
+                                    <span class="text-[9px]">Grade 12</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="text-xs pt-1 border-t border-dashed border-slate-300">
+                            <span class="text-slate-600 font-semibold block text-[9px] mb-1">Inclusive Education & Special Program Affiliations:</span>
+                            <div class="flex flex-wrap gap-x-6 gap-y-1">
+                                <label class="flex items-center gap-1.5">
+                                    <input type="checkbox" id="chk-disability" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                    <span class="text-[10px] font-medium">Learner with Disability / Special Needs</span>
+                                </label>
+                                <label class="flex items-center gap-1.5">
+                                    <input type="checkbox" id="chk-ip" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                    <span class="text-[10px] font-medium">Indigenous Peoples (IP) Learner</span>
+                                </label>
+                                <label class="flex items-center gap-1.5">
+                                    <input type="checkbox" id="chk-muslim" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                    <span class="text-[10px] font-medium">Muslim Learner (MEP/ALIVE)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Family Background & Household Dynamics -->
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-1.5 font-sans">II. Family & Guardian Profile</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Father's Full Name:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs" id="out-father">________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Mother's Maiden Name:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs" id="out-mother">________________________________________</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Legal Guardian (if not with parents):</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs" id="out-guardian">________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Emergency Contact Number:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs mb-px font-sans" id="out-contact">________________________________________</span>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-slate-600 font-medium block text-[9px]">Living Arrangement:</span>
+                            <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs" id="out-living">________________________</span>
+                        </div>
+
+                        <!-- Socio-Economic -->
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-1.5 font-sans">III. Socio-Economic Profile</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-sans">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Primary Source of Household Income:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs" id="out-income-source">____________________________________________________</span>
+                            </div>
+                            <div class="flex gap-6 mt-3 text-xs">
+                                <span class="text-slate-600 font-semibold block text-[9px] self-center">Program Benefits:</span>
+                                <label class="flex items-center gap-1.5 font-sans">
+                                    <input type="checkbox" id="chk-4ps" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                    <span class="text-[10px]">Pantawid Pamilyang Pilipino Program (4Ps) Beneficiary</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Medical Profile -->
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-1.5 font-sans">IV. Health, Medical & Accommodations History</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-sans">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Existing Medical Diagnoses / Chronic Illnesses:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-medical">________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Required Special Classroom Accommodations:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-allergies">________________________________________</span>
+                            </div>
+                        </div>
+
+                        <!-- Personal Profile & Career Plans -->
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-1.5 font-sans">V. Career Goals & Aspirations</h3>
+                        <div class="text-xs font-sans">
+                            <span class="text-slate-600 font-medium block text-[9px]">Career Goal / Preferred Future Aspiration:</span>
+                            <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 text-xs font-sans" id="out-aspiration">________________________________________</span>
+                        </div>
+
+                        <!-- Risk Factors -->
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-1.5 font-sans">VI. Screening for Early Prevention & Guidance Attention</h3>
+                        <div class="grid grid-cols-2 gap-1 text-[10px] font-sans">
+                            <label class="flex items-center gap-1.5">
+                                <input type="checkbox" id="chk-risk-absent" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                <span>History of Chronic Absenteeism</span>
+                            </label>
+                            <label class="flex items-center gap-1.5">
+                                <input type="checkbox" id="chk-risk-family" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                <span>Undergoing Challenging Family Situations</span>
+                            </label>
+                            <label class="flex items-center gap-1.5">
+                                <input type="checkbox" id="chk-risk-academic" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                <span>History of Academic Failures</span>
+                            </label>
+                            <label class="flex items-center gap-1.5">
+                                <input type="checkbox" id="chk-risk-stress" class="rounded text-black focus:ring-0 border-black w-3.5 h-3.5">
+                                <span>Experiencing Extreme Stress or Anxiety</span>
+                            </label>
+                        </div>
+                    </div>
+
+
+                    <!-- ================== TEMPLATE B: GENERAL REFERRAL SLIP ================== -->
+                    <div id="template-referral" class="space-y-3 mt-3 hidden print-tight font-sans">
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider">I. Referral Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs print-grid">
+                            <div class="md:col-span-2">
+                                <span class="text-slate-600 font-medium block text-[9px]">Referred Student Name:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-ref-student">________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Date of Referral:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-ref-date">_______________________</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Grade Level & Section:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-ref-gradesec">_________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Referred By:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-ref-by">_________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Relationship / Role:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-ref-relationship">_________________________</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs">
+                            <span class="text-slate-600 font-medium block text-[9px]">Primary Reason for Referral:</span>
+                            <span class="border-b border-dashed border-black font-bold block min-h-[1.25rem] pt-0.5 text-blue-900" id="out-ref-reason">________________________________________</span>
+                        </div>
+
+                        <div class="text-xs">
+                            <span class="text-slate-600 font-medium block text-[9px]">Description of Behavioral observations / Specific concerns:</span>
+                            <div class="border border-black p-2.5 rounded min-h-[3rem] text-[11px] leading-relaxed whitespace-pre-wrap bg-slate-50/20 text-xs" id="out-ref-remarks">No problems described yet.</div>
+                        </div>
+
+                        <div class="text-xs">
+                            <span class="text-slate-600 font-medium block text-[9px]">Prior Interventions Conducted by Referrer:</span>
+                            <div class="border border-black p-2.5 rounded min-h-[3rem] text-[11px] leading-relaxed whitespace-pre-wrap bg-slate-50/50 text-xs font-sans" id="out-ref-prior">No initial actions logged.</div>
+                        </div>
+
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-1.5">II. Counselor Consultation Actions & Notes</h3>
+                        <div class="border border-black p-2.5 rounded text-[10px] space-y-2">
+                            <div class="flex gap-6">
+                                <label class="flex items-center gap-1.5"><input type="checkbox" id="chk-act-interview" class="rounded border-black" disabled> <span>Diagnostic Interview</span></label>
+                                <label class="flex items-center gap-1.5"><input type="checkbox" id="chk-act-parent" class="rounded border-black" disabled> <span>Parent Conference</span></label>
+                                <label class="flex items-center gap-1.5"><input type="checkbox" id="chk-act-home" class="rounded border-black" disabled> <span>Home Visitation</span></label>
+                                <label class="flex items-center gap-1.5"><input type="checkbox" id="chk-act-referral" class="rounded border-black" disabled> <span>External Referral</span></label>
+                            </div>
+                            <div class="pt-1.5">
+                                <span class="text-slate-600 font-semibold block text-[9px]">Counselor Assessment Notes & Consultation Recommendations:</span>
+                                <div class="border border-dashed border-slate-300 p-2 rounded min-h-[3rem] text-[11px] leading-relaxed whitespace-pre-wrap mt-1 text-xs" id="out-ref-recommendations">None logged.</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 pt-1 border-t border-dashed">
+                                <div>
+                                    <span class="text-slate-600 font-medium block text-[9px]">Follow-Up Evaluation Date:</span>
+                                    <span class="font-bold text-xs text-xs" id="out-ref-followup">_________________</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ================== TEMPLATE C: CHILD PROTECTION REPORT ================== -->
+                    <div id="template-incident" class="space-y-4 mt-4 hidden print-tight font-sans">
+                        <h3 class="text-xs font-extrabold text-red-900 uppercase border-b border-black pb-0.5 tracking-wider">I. Incident Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs print-grid font-sans">
+                            <div class="md:col-span-1">
+                                <span class="text-slate-600 font-medium block text-[9px]">Reporter / Complainant:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-inc-reporter">___________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Alleged Victim Name:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-inc-victim">___________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Alleged Perpetrator Name:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 font-sans" id="out-inc-perpetrator">___________________________</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Type of Incident (DepEd Child Protection Policy Category):</span>
+                                <span class="border-b border-dashed border-black font-bold text-red-700 block min-h-[1.25rem] pt-0.5 font-sans" id="out-inc-type">________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Date & Time of the Incident:</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5" id="out-inc-date">________________________________________</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs">
+                            <span class="text-slate-600 font-medium block text-[9px]">Factual Narrative of the Incident:</span>
+                            <div class="border border-red-200 p-3 rounded min-h-[5rem] text-[11px] leading-relaxed whitespace-pre-wrap bg-red-50/20 text-xs" id="out-inc-narrative"></div>
+                        </div>
+
+                        <!-- SECTION II - INCIDENT ACTION & INTERVENTION DETAILS -->
+                        <h3 class="text-xs font-extrabold text-red-955 uppercase border-b border-black pb-0.5 tracking-wider pt-2 font-sans">II. Official Interventions & Resolution Plan</h3>
+                        <div class="border border-black p-3 rounded text-[10px] space-y-2 font-sans">
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-1.5">
+                                    <input type="checkbox" id="chk-inc-parent" class="rounded border-black" disabled> 
+                                    <span>Parent Confrontation</span>
+                                </label>
+                                <label class="flex items-center gap-1.5">
+                                    <input type="checkbox" id="chk-inc-behavioral" class="rounded border-black" disabled> 
+                                    <span>Guidance Behavioral Plan</span>
+                                </label>
+                                <label class="flex items-center gap-1.5">
+                                    <input type="checkbox" id="chk-inc-wcpc" class="rounded border-black" disabled> 
+                                    <span>WCPC / Barangay Referral</span>
+                                </label>
+                            </div>
+                            <div class="pt-2">
+                                <span class="text-slate-600 font-semibold block text-[9px]">Sanctions / Recovery Resolutions Mandated:</span>
+                                <div class="border border-dashed border-slate-300 p-2 rounded min-h-[3.5rem] text-[11px] leading-relaxed whitespace-pre-wrap mt-1 text-xs" id="out-inc-resolution">No interventions logged.</div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ================== TEMPLATE D: PROGRAM EVALUATION ================== -->
+                    <div id="template-evaluation" class="space-y-4 mt-4 hidden print-tight">
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider font-sans">I. Respondent Profile</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Name of Respondent (Optional):</span>
+                                <span class="border-b border-dashed border-black font-semibold block min-h-[1.25rem] pt-0.5 font-sans" id="out-eval-name">________________________________________</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-600 font-medium block text-[9px]">Affiliation Designation Group:</span>
+                                <span class="border-b border-dashed border-black font-bold block min-h-[1.25rem] pt-0.5 text-indigo-800 animate-pulse" id="out-eval-group">________________________________________</span>
+                            </div>
+                        </div>
+
+                        <h3 class="text-xs font-extrabold text-slate-900 uppercase border-b border-black pb-0.5 tracking-wider pt-2 font-sans">II. Services Rating Scale (5 - Highest, 1 - Lowest)</h3>
+                        <div class="space-y-3 text-xs">
+                            <div class="flex justify-between items-center bg-slate-50 p-2 rounded border">
+                                <span>1. Counselor Intake, Student Profiling, & Confidentiality Maintenance:</span>
+                                <span class="font-bold text-indigo-900 px-3" id="out-eval-q1">Score</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-50 p-2 rounded border">
+                                <span>2. Psychosocial Support Campaign, Mental Health Activities & Re-entry Grounding:</span>
+                                <span class="font-bold text-indigo-900 px-3" id="out-eval-q2">Score</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs">
+                            <span class="text-slate-600 font-medium block text-[9px]">What changes / enhancements do you suggest for next school year's Guidance Action Plan?</span>
+                            <div class="border border-black p-3 rounded min-h-[5rem] text-[11px] leading-relaxed whitespace-pre-wrap text-xs" id="out-eval-comments"></div>
+                        </div>
+                    </div>
+
+                    <!-- Declarations and Hand Signatures -->
+                    <div class="mt-3 border-t border-black pt-2 print-tight">
+                        <p class="text-[8px] text-slate-500 text-justify leading-tight">
+                            <strong>Data Privacy Accord:</strong> The collected information will be handled under the terms of the Data Privacy Act of 2012. Records will remain strictly confidential and accessed exclusively by authorized DepEd guidance personnel for tracking mental health support & academic growth programs.
+                        </p>
+                        <div class="grid grid-cols-3 gap-6 mt-3 text-xs text-center">
+                            <div class="space-y-1">
+                                <div class="border-b border-black w-11/12 mx-auto min-h-[1.25rem]"></div>
+                                <span class="text-[9px] block font-semibold text-slate-700 font-sans">Signature of Claimant / Client</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="border-b border-black w-11/12 mx-auto min-h-[1.25rem] flex items-end justify-center pb-px font-sans">
+                                    <span class="font-extrabold text-[10px] uppercase text-slate-900 tracking-wide">Junnel D. Marfil</span>
+                                </div>
+                                <span class="text-[9px] block font-semibold text-slate-700 font-sans">Guidance Counselor / Recorder</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="border-b border-black w-11/12 mx-auto min-h-[1.25rem] flex items-end justify-center pb-px">
+                                    <span class="font-extrabold text-[10px] uppercase text-slate-900 tracking-wide font-sans">Argie B. Ducusin</span>
+                                </div>
+                                <span class="text-[9px] block font-semibold text-slate-700 font-sans">School Head</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Official Use Only Footer Block -->
+                    <div class="mt-3 border border-black p-2 bg-slate-50 text-[9px] rounded print-tight print-border">
+                        <strong class="uppercase text-slate-950 tracking-wider font-extrabold text-[10px] font-sans">For Guidance Office Staff Use Only</strong>
+                        <div class="grid grid-cols-3 gap-4 mt-1 text-slate-700">
+                            <div>
+                                <span class="block">Physical Folder Intake:</span>
+                                <span class="font-bold border border-black px-1 py-0.5 rounded text-[8px] inline-block mt-0.5 bg-white text-emerald-800 border-emerald-600 font-sans">RECORD APPROVED</span>
+                            </div>
+                            <div>
+                                <span class="block">Digital Registry Record:</span>
+                                <span class="font-bold border border-black px-1 py-0.5 rounded text-[8px] inline-block mt-0.5 bg-white text-blue-800 border-blue-600 font-sans">RECORD SAVED</span>
+                            </div>
+                            <div>
+                                <span class="block">Intake Officer Sign / Date:</span>
+                                <span class="block border-b border-dashed border-black mt-1 min-h-[12px]"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================== TAB 3: DIGITAL REGISTRY DATABASE ================== -->
+        <section id="pane-registry" class="hidden space-y-6">
+            <!-- PENDING VERIFICATION QUEUE CARD (Admin Review Desk) -->
+            <div id="pending-queue-section" class="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm space-y-4 hidden no-print">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-amber-900 text-lg flex items-center gap-2 font-sans">
+                        <i data-lucide="clock" class="text-amber-700 w-5 h-5 animate-pulse"></i>
+                        Pending Verification Queue (<span id="pending-count">0</span>)
+                    </h3>
+                    <span class="text-xs bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full font-bold font-sans">Requires Action</span>
+                </div>
+                <p class="text-xs text-amber-800 leading-relaxed font-sans">
+                    These profiles and reports were submitted via the Student Portal or external links. Review their details, verify school affiliation, and manually **Approve** to save them to the official registry, or **Reject** to discard them.
+                </p>
+                <div class="overflow-x-auto bg-white rounded-lg border border-amber-200">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-amber-100/50 border-b border-amber-200 text-amber-900 text-xs font-bold uppercase tracking-wider font-sans">
+                                <th class="p-3">Document Type</th>
+                                <th class="p-3">Full Name</th>
+                                <th class="p-3">Identifier / Date</th>
+                                <th class="p-3">Class / Description</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-rows" class="divide-y divide-amber-50">
+                            <!-- Pending row entries loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Main Database Registry Controls -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-lg border border-slate-200 shadow-sm gap-4">
+                <div>
+                    <h3 class="font-bold text-slate-950 text-lg font-sans">Secure Digital Guidance Records Database</h3>
+                    <p class="text-xs text-slate-500 font-sans">Local Storage Active. Backup logs can be exported and stored securely on your local C or D drive.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto font-sans">
+                    <!-- Export Button (Excel) -->
+                    <button onclick="window.exportDatabaseToDrive()" class="flex-1 md:flex-initial py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-blue-200 font-sans shadow-sm">
+                        <i data-lucide="download" class="w-4 h-4"></i> Export to Excel
+                    </button>
+                    <!-- Import Button (Excel) -->
+                    <button onclick="window.triggerImportFile()" class="flex-1 md:flex-initial py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-emerald-200 font-sans shadow-sm">
+                        <i data-lucide="upload" class="w-4 h-4"></i> Import from Excel
+                    </button>
+                    <!-- Hidden File Input for Import -->
+                    <input type="file" id="import-file-input" onchange="window.handleDatabaseImport(event)" accept=".xlsx, .xls" class="hidden animate-pulse">
+                    
+                    <!-- Clear All Button -->
+                    <button onclick="window.clearRegistry()" class="flex-1 md:flex-initial py-2 px-3 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-red-200 font-sans shadow-sm">
+                        <i data-lucide="trash" class="w-3.5 h-3.5"></i> Clear All Records
+                    </button>
+                </div>
+            </div>
+
+            <!-- Registry Table View -->
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider">
+                            <th class="p-4">Document Type</th>
+                            <th class="p-4">Primary Name</th>
+                            <th class="p-4">Identifier / Date</th>
+                            <th class="p-4">Class / Tags</th>
+                            <th class="p-4">Key Content Synopsis</th>
+                            <th class="p-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registry-rows" class="divide-y divide-slate-100">
+                        <!-- Content rendered dynamically via javascript -->
+                    </tbody>
+                </table>
+                <div id="no-records-msg" class="p-12 text-center text-slate-400 hidden">
+                    <i data-lucide="folder-open" class="w-12 h-12 mx-auto mb-3 opacity-50 font-sans"></i>
+                    <p class="font-medium text-slate-600">No documents cataloged yet</p>
+                    <p class="text-xs mt-1 font-sans">Select any form, configure details and click "Save to Digital Registry" to build your database logs.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom dialog box instead of browser alert windows -->
+    <div id="dialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center gap-3 animate-bounce">
+                <div id="dialog-icon-container" class="p-2 bg-emerald-100 text-emerald-800 rounded-full">
+                    <i id="dialog-icon" data-lucide="check-circle" class="w-6 h-6"></i>
+                </div>
+                <h4 id="dialog-title" class="font-extrabold text-slate-900 text-lg">Success</h4>
+            </div>
+            <p id="dialog-body" class="text-sm text-slate-600 font-sans">Action performed successfully.</p>
+            <div class="flex justify-end">
+                <button onclick="window.closeDialog()" class="py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-lg font-sans">Okay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer of Page with Author Details -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 text-center space-y-2 no-print font-sans">
+        <p>© 2026 Lalawan National High School Guidance & Counseling Office.</p>
+        <p class="text-xs text-blue-400 font-semibold">System Developed By: Junnel Duran Marfil <span class="text-slate-500 ml-2 font-normal">| Version 2.3.8</span></p>
+        <p class="text-xs text-slate-400">For questions and queries, please call or text: <span class="text-emerald-400 font-bold">09913022162</span></p>
+        <p class="text-[10px] text-slate-600 font-sans pt-1">Linabo, Malaybalay City, Bukidnon • Created for rapid physical intake tracking and compliance with DepEd student service guidelines.</p>
+    </footer>
+
+    <!-- Storage and UI Controller Script -->
+    <script>
+        // Storage Keys & Core Session State
+        window.LOCAL_STORAGE_KEY = 'lnhs_guidance_records_db';
+        window.ADMIN_PASS_KEY = 'lnhs_admin_password';
+        window.registryDatabase = [];
+        window.selectedDocId = null; 
+        window.currentRole = 'student'; // Default state
+
+        // Firebase connectivity
+        window.db = null;
+        window.auth = null;
+        window.analytics = null;
+        window.useFirebase = false;
+        window.currentFirebaseUser = null;
+
+        // 1. Core Structural Functional Blocks
+        window.getGradeGroup = function(doc) {
+            try {
+                if (doc.type === 'inventory' && doc.grade) {
+                    const cleanGrade = String(doc.grade).trim();
+                    if (cleanGrade.startsWith("Grade 7")) return "Grade 7";
+                    if (cleanGrade.startsWith("Grade 8")) return "Grade 8";
+                    if (cleanGrade.startsWith("Grade 9")) return "Grade 9";
+                    if (cleanGrade.startsWith("Grade 10")) return "Grade 10";
+                    if (cleanGrade.startsWith("Grade 11")) return "Grade 11";
+                    if (cleanGrade.startsWith("Grade 12")) return "Grade 12";
+                }
+                if (doc.type === 'referral' && doc.grade) {
+                    const matched = String(doc.grade).match(/Grade\s*(7|8|9|10|11|12)/i);
+                    if (matched) return "Grade " + matched[1];
+                }
+                if (doc.classification) {
+                    const cleanClass = String(doc.classification).trim();
+                    if (cleanClass.startsWith("Grade 7")) return "Grade 7";
+                    if (cleanClass.startsWith("Grade 8")) return "Grade 8";
+                    if (cleanClass.startsWith("Grade 9")) return "Grade 9";
+                    if (cleanClass.startsWith("Grade 10")) return "Grade 10";
+                    if (cleanClass.startsWith("Grade 11")) return "Grade 11";
+                    if (cleanClass.startsWith("Grade 12")) return "Grade 12";
+                }
+            } catch (e) {
+                console.error("Error evaluating grade group", e);
+            }
+            return "Other / Non-Student Records";
+        };
+
+        window.hashPassword = async function(plainText) {
+            try {
+                if (window.crypto && window.crypto.subtle) {
+                    const msgBuffer = new TextEncoder().encode(plainText);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+            } catch (e) {
+                console.warn("SubtleCrypto not supported. Using offline fallback.");
+            }
+            let hash = 0;
+            for (let i = 0; i < plainText.length; i++) {
+                const char = plainText.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; 
+            }
+            return "fallback_" + Math.abs(hash).toString(16);
+        };
+
+        window.initDefaultPassword = async function() {
+            if (!localStorage.getItem(window.ADMIN_PASS_KEY)) {
+                const defaultHash = await window.hashPassword('admin123');
+                localStorage.setItem(window.ADMIN_PASS_KEY, defaultHash);
+            }
+        };
+
+        window.initFirebase = async function() {
+            const secureApiKey = atob("QUl6YVN5QjB2UWI0cjM0UV9JY1pNMFYtNTRKdVhGRkl5VVVXdkxB");
+
+            const firebaseConfig = {
+                apiKey: secureApiKey,
+                authDomain: "lnhs-guidance-form.firebaseapp.com",
+                projectId: "lnhs-guidance-form",
+                storageBucket: "lnhs-guidance-form.firebasestorage.app",
+                messagingSenderId: "241994189311",
+                appId: "1:241994189311:web:423f372e059724d5727fca",
+                measurementId: "G-LT0NNJX04N"
+            };
+
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                window.analytics = firebase.analytics();
+                window.db = firebase.firestore();
+                window.auth = firebase.auth();
+                
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await window.auth.signInWithCustomToken(__initial_auth_token);
+                } else {
+                    await window.auth.signInAnonymously();
+                }
+                
+                window.auth.onAuthStateChanged((user) => {
+                    window.currentFirebaseUser = user;
+                    window.updateNetworkStatusBadge();
+                    if (user && window.currentRole === 'admin') {
+                        window.syncFromFirestore();
+                    }
+                });
+                window.useFirebase = true;
+            } catch (err) {
+                console.warn("Firebase failed to load/init. Running local-only mode:", err);
+            }
+            window.updateNetworkStatusBadge();
+        };
+
+        window.syncFromFirestore = async function() {
+            if (!window.useFirebase || !window.currentFirebaseUser) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'lnhs-guidance-app';
+            try {
+                const snapshot = await window.db.collection('artifacts').doc(appId)
+                                    .collection('public').doc('data')
+                                    .collection('guidance_records').get();
+                
+                let firestoreRecords = [];
+                snapshot.forEach(doc => {
+                    firestoreRecords.push(doc.data());
+                });
+                
+                if (firestoreRecords.length > 0) {
+                    firestoreRecords.forEach(imported => {
+                        const existingIndex = window.registryDatabase.findIndex(existing => existing.id === imported.id);
+                        if (existingIndex !== -1) {
+                            window.registryDatabase[existingIndex] = { ...window.registryDatabase[existingIndex], ...imported };
+                        } else {
+                            window.registryDatabase.push(imported);
+                        }
+                    });
+                    window.saveToLocalDrive();
+                    window.renderRegistry();
+                    window.updateFormOutput();
+                    console.log(`Cloud Sync complete: Consolidated ${firestoreRecords.length} records.`);
+                }
+            } catch (err) {
+                console.error("Cloud synchronization interrupted:", err);
+            }
+        };
+
+        window.updateNetworkStatusBadge = function() {
+            const badge = document.getElementById('db-status');
+            if (!badge) return;
+            if (navigator.onLine) {
+                if (window.useFirebase && window.currentFirebaseUser) {
+                    badge.innerHTML = `
+                        <span class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full font-semibold border border-emerald-800 animate-pulse font-sans">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Firebase Online
+                        </span>
+                    `;
+                } else {
+                    badge.innerHTML = `
+                        <span class="flex items-center gap-1.5 text-xs text-blue-400 bg-blue-955/50 px-2.5 py-1 rounded-full font-semibold border border-blue-800 font-sans">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> Local Drive Active
+                        </span>
+                    `;
+                }
+            } else {
+                badge.innerHTML = `
+                    <span class="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-955/50 px-2.5 py-1 rounded-full font-semibold border border-amber-800 font-sans">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span> Offline Mode Active
+                    </span>
+                `;
+            }
+        };
+
+        window.loadFromLocalDrive = function() {
+            try {
+                const storedData = localStorage.getItem(window.LOCAL_STORAGE_KEY);
+                if (storedData) {
+                    try {
+                        window.registryDatabase = JSON.parse(storedData);
+                    } catch (parseError) {
+                        console.error("Corrupted database format. Resetting...", parseError);
+                        window.seedDefaultData();
+                    }
+                } else {
+                    window.seedDefaultData();
+                }
+            } catch (e) {
+                console.error("Local storage load failed, using temporary storage.", e);
+                window.seedDefaultData();
+            }
+        };
+
+        window.saveToLocalDrive = function() {
+            try {
+                localStorage.setItem(window.LOCAL_STORAGE_KEY, JSON.stringify(window.registryDatabase));
+            } catch (e) {
+                console.error("Local storage write failed.", e);
+            }
+        };
+
+        window.seedDefaultData = function() {
+            window.registryDatabase = [
+                {
+                    id: "default-1",
+                    type: "inventory",
+                    name: "Santos, Maria Clara L.",
+                    lrn: "109847120392",
+                    grade: "Grade 7",
+                    section: "Mabini",
+                    dob: "2014-04-12",
+                    sex: "Female",
+                    classification: "Grade 7",
+                    disability: false,
+                    ip: true,
+                    muslim: false,
+                    father: "Juan L. Santos",
+                    mother: "Clara L. Luz",
+                    guardian: "N/A",
+                    contact: "0915-443-8899",
+                    living: "Living with Both Parents",
+                    source: "Farming / Local Trade",
+                    fourps: true,
+                    medical: "None reported",
+                    allergies: "Front row seating",
+                    aspiration: "Elementary School Teacher",
+                    riskAbsent: false,
+                    riskFamily: true,
+                    riskAcademic: false,
+                    riskStress: false,
+                    status: "approved"
+                }
+            ];
+            window.saveToLocalDrive();
+        };
+
+        window.changeActiveForm = function() {
+            window.selectedDocId = null;
+            const formType = document.getElementById('form-selector').value;
+
+            document.getElementById('inputs-inventory').classList.add('hidden');
+            document.getElementById('inputs-referral').classList.add('hidden');
+            document.getElementById('inputs-incident').classList.add('hidden');
+            document.getElementById('inputs-evaluation').classList.add('hidden');
+            document.getElementById(`inputs-${formType}`).classList.remove('hidden');
+
+            document.getElementById('template-inventory').classList.add('hidden');
+            document.getElementById('template-referral').classList.add('hidden');
+            document.getElementById('template-incident').classList.add('hidden');
+            document.getElementById('template-evaluation').classList.add('hidden');
+            document.getElementById(`template-${formType}`).classList.remove('hidden');
+
+            const titleElem = document.getElementById('canvas-form-title');
+            if (formType === 'inventory') titleElem.innerText = "Guidance and Counseling Individual Student Inventory Form";
+            if (formType === 'referral') titleElem.innerText = "Student Referral Slip & Action Consultation Record";
+            if (formType === 'incident') titleElem.innerText = "Child Protection / Bullying Incident Intake Sheet";
+            if (formType === 'evaluation') titleElem.innerText = "Guidance Services Evaluation & Feedback Survey";
+
+            window.updateFormOutput();
+        };
+
+        window.updateFormOutput = function() {
+            const formType = document.getElementById('form-selector').value;
+
+            if (formType === 'inventory') {
+                document.getElementById('out-fullname').innerText = document.getElementById('input-fullname').value || "____________________________________________________";
+                document.getElementById('out-lrn').innerText = document.getElementById('input-lrn').value || "__________________________";
+                document.getElementById('out-grade').innerText = document.getElementById('input-grade').value || "____________";
+                document.getElementById('out-section').innerText = document.getElementById('input-section').value || "____________";
+                document.getElementById('out-dob').innerText = document.getElementById('input-dob').value || "____________________";
+                document.getElementById('out-sex').innerText = document.getElementById('input-sex').value || "____________";
+                
+                const status = document.getElementById('input-status').value;
+                document.getElementById('chk-g7').checked = (status === "Grade 7");
+                document.getElementById('chk-g8').checked = (status === "Grade 8");
+                document.getElementById('chk-g9').checked = (status === "Grade 9");
+                document.getElementById('chk-g10').checked = (status === "Grade 10");
+                document.getElementById('chk-g11').checked = (status === "Grade 11");
+                document.getElementById('chk-g12').checked = (status === "Grade 12");
+
+                document.getElementById('chk-disability').checked = document.getElementById('input-disability').checked;
+                document.getElementById('chk-ip').checked = document.getElementById('input-ip').checked;
+                document.getElementById('chk-muslim').checked = document.getElementById('input-muslim').checked;
+
+                document.getElementById('out-father').innerText = document.getElementById('input-father').value || "________________________________________";
+                document.getElementById('out-mother').innerText = document.getElementById('input-mother').value || "________________________________________";
+                document.getElementById('out-guardian').innerText = document.getElementById('input-guardian').value || "________________________________________";
+                document.getElementById('out-contact').innerText = document.getElementById('input-contact').value || "________________________________________";
+                document.getElementById('out-living').innerText = document.getElementById('input-living').value || "________________________";
+
+                document.getElementById('out-income-source').innerText = document.getElementById('input-income-source').value || "____________________________________________________";
+                document.getElementById('chk-4ps').checked = document.getElementById('input-4ps').checked;
+
+                document.getElementById('out-medical').innerText = document.getElementById('input-medical').value || "________________________________________";
+                document.getElementById('out-allergies').innerText = document.getElementById('input-allergies').value || "________________________________________";
+                document.getElementById('out-aspiration').innerText = document.getElementById('input-aspiration').value || "________________________________________";
+
+                document.getElementById('chk-risk-absent').checked = document.getElementById('input-risk-absent').checked;
+                document.getElementById('chk-risk-family').checked = document.getElementById('input-risk-family').checked;
+                document.getElementById('chk-risk-academic').checked = document.getElementById('input-risk-academic').checked;
+                document.getElementById('chk-risk-stress').checked = document.getElementById('input-risk-stress').checked;
+            } 
+            else if (formType === 'referral') {
+                document.getElementById('out-ref-student').innerText = document.getElementById('input-ref-student').value || "________________________________________";
+                document.getElementById('out-ref-gradesec').innerText = document.getElementById('input-ref-gradesec').value || "________________________________________";
+                document.getElementById('out-ref-date').innerText = document.getElementById('input-ref-date').value || "_______________________";
+                document.getElementById('out-ref-by').innerText = document.getElementById('input-ref-by').value || "________________________________________";
+                document.getElementById('out-ref-relationship').innerText = document.getElementById('input-ref-relationship').value || "________________________________________";
+                document.getElementById('out-ref-reason').innerText = document.getElementById('input-ref-reason').value;
+                document.getElementById('out-ref-remarks').innerText = document.getElementById('input-ref-remarks').value || "No observations written yet.";
+                document.getElementById('out-ref-prior').innerText = document.getElementById('input-ref-prior').value || "No prior actions logged by referrer.";
+                
+                document.getElementById('chk-act-interview').checked = document.getElementById('input-act-interview').checked;
+                document.getElementById('chk-act-parent').checked = document.getElementById('input-act-parent').checked;
+                document.getElementById('chk-act-home').checked = document.getElementById('input-act-home').checked;
+                document.getElementById('chk-act-referral').checked = document.getElementById('input-act-referral').checked;
+
+                document.getElementById('out-ref-recommendations').innerText = document.getElementById('input-ref-recommendations').value || "None logged.";
+                document.getElementById('out-ref-followup').innerText = document.getElementById('input-ref-followup').value || "_________________";
+            } 
+            else if (formType === 'incident') {
+                const cleanName = document.getElementById('input-inc-victim').value ? document.getElementById('input-inc-victim').value.replace(" (Victim)", "") : "";
+                document.getElementById('out-inc-victim').innerText = cleanName || "___________________________";
+                document.getElementById('out-inc-reporter').innerText = document.getElementById('input-inc-reporter').value || "___________________________";
+                document.getElementById('out-inc-perpetrator').innerText = document.getElementById('input-inc-perpetrator').value || "___________________________";
+                document.getElementById('out-inc-type').innerText = document.getElementById('input-inc-type').value;
+                document.getElementById('out-inc-date').innerText = document.getElementById('input-inc-date').value || "________________________________________";
+                document.getElementById('out-inc-narrative').innerText = document.getElementById('input-inc-narrative').value || "Describe chronological events here.";
+
+                document.getElementById('chk-inc-parent').checked = document.getElementById('input-inc-parent').checked;
+                document.getElementById('chk-inc-behavioral').checked = document.getElementById('input-inc-behavioral').checked;
+                document.getElementById('chk-inc-wcpc').checked = document.getElementById('input-inc-wcpc').checked;
+                document.getElementById('out-inc-resolution').innerText = document.getElementById('input-inc-resolution').value || "No resolutions/interventions recorded yet.";
+            } 
+            else if (formType === 'evaluation') {
+                document.getElementById('out-eval-name').innerText = document.getElementById('input-eval-name').value || "________________________________________";
+                document.getElementById('out-eval-group').innerText = document.getElementById('input-eval-group').value;
+                document.getElementById('out-eval-q1').innerText = document.getElementById('input-eval-q1').value;
+                document.getElementById('out-eval-q2').innerText = document.getElementById('input-eval-q2').value;
+                document.getElementById('out-eval-comments').innerText = document.getElementById('input-eval-comments').value || "Add suggestions or feedback notes here.";
+            }
+        };
+
+        window.saveActiveFormToRegistry = async function() {
+            const formType = document.getElementById('form-selector').value;
+            let record = { type: formType };
+
+            if (formType === 'inventory') {
+                const name = document.getElementById('input-fullname').value;
+                if (!name) return window.showCustomDialog("Incomplete Form", "Please fill in the Student Name first.", "alert-triangle", "red");
+                record.name = name;
+                record.lrn = document.getElementById('input-lrn').value || "WALA";
+                record.grade = document.getElementById('input-grade').value || "Grade Level";
+                record.section = document.getElementById('input-section').value || "Section";
+                record.classification = document.getElementById('input-status').value || "N/A";
+                record.disability = document.getElementById('input-disability').checked;
+                record.ip = document.getElementById('input-ip').checked;
+                record.muslim = document.getElementById('input-muslim').checked;
+                record.father = document.getElementById('input-father').value || "N/A";
+                record.mother = document.getElementById('input-mother').value || "N/A";
+                record.guardian = document.getElementById('input-guardian').value || "N/A";
+                record.contact = document.getElementById('input-contact').value || "N/A";
+                record.living = document.getElementById('input-living').value || "N/A";
+                record.source = document.getElementById('input-income-source').value || "N/A";
+                record.fourps = document.getElementById('input-4ps').checked;
+                record.medical = document.getElementById('input-medical').value || "None Reported";
+                record.allergies = document.getElementById('input-allergies').value || "None";
+                record.aspiration = document.getElementById('input-aspiration').value || "N/A";
+                record.riskAbsent = document.getElementById('input-risk-absent').checked;
+                record.riskFamily = document.getElementById('input-risk-family').checked;
+                record.riskAcademic = document.getElementById('input-risk-academic').checked;
+                record.riskStress = document.getElementById('input-risk-stress').checked;
+            } 
+            else if (formType === 'referral') {
+                const student = document.getElementById('input-ref-student').value;
+                if (!student) return window.showCustomDialog("Incomplete Form", "Please fill in the Referred Student Name.", "alert-triangle", "red");
+                record.name = student;
+                record.grade = document.getElementById('input-ref-gradesec').value || "Unassigned";
+                record.refDate = document.getElementById('input-ref-date').value || "N/A";
+                record.referredBy = document.getElementById('input-ref-by').value || "Anonymously";
+                record.relationship = document.getElementById('input-ref-relationship').value || "Peer/Adviser";
+                record.reason = document.getElementById('input-ref-reason').value;
+                record.synopsis = document.getElementById('input-ref-remarks').value || "No observations registered.";
+                record.prior = document.getElementById('input-ref-prior').value || "None";
+                record.actInterview = document.getElementById('input-act-interview').checked;
+                record.actParent = document.getElementById('input-act-parent').checked;
+                record.actHome = document.getElementById('input-act-home').checked;
+                record.actReferral = document.getElementById('input-act-referral').checked;
+                record.recommendations = document.getElementById('input-ref-recommendations').value || "None";
+                record.followup = document.getElementById('input-ref-followup').value || "";
+            } 
+            else if (formType === 'incident') {
+                const victim = document.getElementById('input-inc-victim').value;
+                if (!victim) return window.showCustomDialog("Incomplete Form", "Please specify the Victim Name.", "alert-triangle", "red");
+                record.name = victim + " (Victim)";
+                record.reporter = document.getElementById('input-inc-reporter').value || "Confidential Reporter";
+                record.perpetrator = document.getElementById('input-inc-perpetrator').value || "Unnamed Peer";
+                record.incidentType = document.getElementById('input-inc-type').value;
+                record.date = document.getElementById('input-inc-date').value || "Date Undefined";
+                record.synopsis = document.getElementById('input-inc-narrative').value || "No intake description logged.";
+                record.incParent = document.getElementById('input-inc-parent').checked;
+                record.incBehavioral = document.getElementById('input-inc-behavioral').checked;
+                record.incWcpc = document.getElementById('input-inc-wcpc').checked;
+                record.incResolution = document.getElementById('input-inc-resolution').value || "None";
+            } 
+            else if (formType === 'evaluation') {
+                const respondent = document.getElementById('input-eval-name').value || "Anonymous Evaluator";
+                record.name = respondent;
+                record.grade = document.getElementById('input-eval-group').value;
+                record.referredBy = "Intake evaluation survey";
+                record.relationship = "Program Feedback Audit";
+                record.reason = "Rating Quality: Q1: " + document.getElementById('input-eval-q1').value.charAt(0) + " | Q2: " + document.getElementById('input-eval-q2').value.charAt(0);
+                record.synopsis = document.getElementById('input-eval-comments').value || "No suggestions provided.";
+            }
+
+            try {
+                if (window.selectedDocId) {
+                    record.id = window.selectedDocId;
+                } else {
+                    record.id = 'lnhs_record_' + Date.now();
+                }
+
+                // SECURITY: Default status to pending if not logged in as Admin
+                record.status = window.currentRole === 'admin' ? 'approved' : 'pending';
+
+                const docIndex = window.registryDatabase.findIndex(doc => doc.id === record.id);
+                if (docIndex !== -1) {
+                    window.registryDatabase[docIndex] = record;
+                } else {
+                    window.registryDatabase.push(record);
+                }
+                window.saveToLocalDrive();
+                window.renderRegistry();
+
+                if (window.useFirebase && navigator.onLine && window.currentFirebaseUser) {
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'lnhs-guidance-app';
+                    await window.db.collection('artifacts').doc(appId)
+                        .collection('public').doc('data')
+                        .collection('guidance_records').doc(record.id).set(record);
+                }
+
+                // Show proper custom popup message
+                if (record.status === 'pending') {
+                    window.showCustomDialog(
+                        "Information Secured!", 
+                        "Thank you! Your information is saved and secure. It has been successfully submitted for Guidance Counselor verification.", 
+                        "shield-check", 
+                        "emerald"
+                    );
+                } else {
+                    window.showCustomDialog("Information Saved and Secure!", "The record has been permanently verified and saved in your registry.", "check-circle", "emerald");
+                }
+
+                window.clearActiveForm(true); // Silently clear form fields without another popup
+            } catch (err) {
+                console.error("Local/Online save failed: ", err);
+                window.showCustomDialog("Save Failed", "Encountered browser disk write or sync errors.", "alert-triangle", "red");
+            }
+        };
+
+        window.exportDatabaseToDrive = function() {
+            try {
+                if (window.registryDatabase.length === 0) {
+                    window.showCustomDialog("Empty Database", "There are no records to export.", "alert-triangle", "red");
+                    return;
+                }
+                const wb = XLSX.utils.book_new();
+                
+                const formatRows = (items, mapping) => {
+                    return items.map(item => {
+                        let row = {};
+                        for (let key in mapping) {
+                            row[mapping[key]] = item[key] !== undefined ? item[key] : "";
+                        }
+                        return row;
+                    });
+                };
+
+                const mappings = {
+                    inventory: {
+                        id: "Record ID", name: "Full Name", lrn: "LRN", grade: "Grade Level", section: "Section",
+                        classification: "Target Status", disability: "Learner with Disability", ip: "IP Learner",
+                        muslim: "Muslim Learner", father: "Father Name", mother: "Mother Name", guardian: "Guardian Name",
+                        contact: "Contact Number", living: "Living Arrangement", source: "Source of Income",
+                        fourps: "4Ps Beneficiary", medical: "Medical Diagnoses", allergies: "Accommodations Needed",
+                        aspiration: "Career Aspiration", riskAbsent: "Risk: Absenteeism", riskFamily: "Risk: Family Challenges",
+                        riskAcademic: "Risk: Academic Failures", riskStress: "Risk: Stress/Anxiety"
+                    },
+                    referral: {
+                        id: "Record ID", name: "Student Name", grade: "Grade & Section", refDate: "Referral Date",
+                        referredBy: "Referred By", relationship: "Relationship", reason: "Reason",
+                        synopsis: "Synopsis of Problem", prior: "Prior Interventions Done", actInterview: "Action: Interview",
+                        actParent: "Action: Parent Conference", actHome: "Action: Home Visitation", actReferral: "Action: External Referral",
+                        recommendations: "Counselor Recommendations", followup: "Follow-up Date"
+                    },
+                    incident: {
+                        id: "Record ID", name: "Victim Name", reporter: "Reporter", perpetrator: "Perpetrator",
+                        incidentType: "Incident Type", date: "Incident Date", synopsis: "Incident Narrative",
+                        incParent: "Action: Parent Confrontation", incBehavioral: "Action: Behavioral Plan",
+                        incWcpc: "Action: WCPC/Barangay Referral", incResolution: "Resolution Plan Details"
+                    },
+                    evaluation: {
+                        id: "Record ID", name: "Respondent Name", grade: "Affiliation Group", referredBy: "Form Type",
+                        relationship: "Feedback Audit", reason: "Rating Scores Summary", synopsis: "Feedback Comments"
+                    }
+                };
+
+                const approvedRecords = window.registryDatabase.filter(r => r.status === 'approved' || !r.status);
+                const inventories = approvedRecords.filter(r => r.type === 'inventory');
+                const referrals = approvedRecords.filter(r => r.type === 'referral');
+                const incidents = approvedRecords.filter(r => r.type === 'incident');
+                const evaluations = approvedRecords.filter(r => r.type === 'evaluation');
+
+                if (inventories.length > 0) {
+                    const ws = XLSX.utils.json_to_sheet(formatRows(inventories, mappings.inventory));
+                    XLSX.utils.book_append_sheet(wb, ws, "Student Profiles");
+                }
+                if (referrals.length > 0) {
+                    const ws = XLSX.utils.json_to_sheet(formatRows(referrals, mappings.referral));
+                    XLSX.utils.book_append_sheet(wb, ws, "Intake Referrals");
+                }
+                if (incidents.length > 0) {
+                    const ws = XLSX.utils.json_to_sheet(formatRows(incidents, mappings.incident));
+                    XLSX.utils.book_append_sheet(wb, ws, "Incident Reports");
+                }
+                if (evaluations.length > 0) {
+                    const ws = XLSX.utils.json_to_sheet(formatRows(evaluations, mappings.evaluation));
+                    XLSX.utils.book_append_sheet(wb, ws, "Program Feedbacks");
+                }
+
+                XLSX.writeFile(wb, `LNHS_Guidance_Database_${new Date().toISOString().slice(0,10)}.xlsx`);
+                window.showCustomDialog("Excel Export Successful", "Database exported to Excel (.xlsx) file.", "check-circle", "emerald");
+            } catch (e) {
+                console.error("Export failed", e);
+                window.showCustomDialog("Export Failed", "Unable to download local Excel file.", "alert-triangle", "red");
+            }
+        };
+
+        window.triggerImportFile = function() {
+            document.getElementById('import-file-input').click();
+        };
+
+        window.handleDatabaseImport = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    let importedRecords = [];
+
+                    const reverseMappings = {
+                        "Student Profiles": {
+                            "Record ID": "id", "Full Name": "name", "LRN": "lrn", "Grade Level": "grade", "Section": "section",
+                            "Target Status": "classification", "Learner with Disability": "disability", "IP Learner": "ip",
+                            "Muslim Learner": "muslim", "Father Name": "father", "Mother Name": "mother", "Guardian Name": "guardian",
+                            "Contact Number": "contact", "Living Arrangement": "living", "Source of Income": "source",
+                            "4Ps Beneficiary": "fourps", "Medical Diagnoses": "medical", "Accommodations Needed": "allergies",
+                            "Career Aspiration": "aspiration", "Risk: Absenteeism": "riskAbsent", "Risk: Family Challenges": "riskFamily",
+                            "Risk: Academic Failures": "riskAcademic", "Risk: Stress/Anxiety": "riskStress"
+                        },
+                        "Intake Referrals": {
+                            "Record ID": "id", "Student Name": "name", "Grade & Section": "grade", "Referral Date": "refDate",
+                            "Referred By": "referredBy", "Relationship": "relationship", "Reason": "reason",
+                            "Synopsis of Problem": "synopsis", "Prior Interventions Done": "prior", "Action: Interview": "actInterview",
+                            "Action: Parent Conference": "actParent", "Action: Home Visitation": "actHome", "Action: External Referral": "actReferral",
+                            "Counselor Recommendations": "recommendations", "Follow-up Date": "followup"
+                        },
+                        "Incident Reports": {
+                            "Record ID": "id", "Victim Name": "name", "Reporter": "reporter", "Perpetrator": "perpetrator",
+                            "Incident Type": "incidentType", "Incident Date": "date", "Incident Narrative": "synopsis",
+                            "Action: Parent Confrontation": "incParent", "Action: Behavioral Plan": "incBehavioral",
+                            "Action: WCPC/Barangay Referral": "incWcpc", "Resolution Plan Details": "incResolution"
+                        },
+                        "Program Feedbacks": {
+                            "Record ID": "id", "Respondent Name": "name", "Affiliation Group": "grade", "Form Type": "referredBy",
+                            "Feedback Audit": "relationship", "Rating Scores Summary": "reason", "Feedback Comments": "synopsis"
+                        }
+                    };
+
+                    const types = {
+                        "Student Profiles": "inventory",
+                        "Intake Referrals": "referral",
+                        "Incident Reports": "incident",
+                        "Program Feedbacks": "evaluation"
+                    };
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        const mapping = reverseMappings[sheetName];
+                        const type = types[sheetName];
+                        if (!mapping || !type) return;
+
+                        const sheet = workbook.Sheets[sheetName];
+                        const rows = XLSX.utils.sheet_to_json(sheet);
+
+                        rows.forEach(row => {
+                            let record = { type: type, status: 'approved' };
+                            for (let colName in mapping) {
+                                let key = mapping[colName];
+                                if (row[colName] !== undefined) {
+                                    let val = row[colName];
+                                    if (val === "true" || val === true) val = true;
+                                    else if (val === "false" || val === false) val = false;
+                                    record[key] = val;
+                                }
+                            }
+                            if (!record.id) {
+                                record.id = 'lnhs_record_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                            }
+                            importedRecords.push(record);
+                        });
+                    });
+
+                    if (importedRecords.length > 0) {
+                        let addedCount = 0;
+                        let updatedCount = 0;
+
+                        importedRecords.forEach(imported => {
+                            const existingIndex = window.registryDatabase.findIndex(existing => {
+                                if (existing.id === imported.id) return true;
+                                if (imported.lrn && imported.lrn !== "WALA" && existing.lrn === imported.lrn && existing.type === imported.type) return true;
+                                if (imported.name && existing.name === imported.name && existing.type === imported.type) return true;
+                                return false;
+                            });
+
+                            if (existingIndex !== -1) {
+                                window.registryDatabase[existingIndex] = { ...window.registryDatabase[existingIndex], ...imported };
+                                updatedCount++;
+                            } else {
+                                window.registryDatabase.push(imported);
+                                addedCount++;
+                            }
+                        });
+
+                        window.saveToLocalDrive();
+                        window.renderRegistry();
+                        window.updateFormOutput();
+                        window.showCustomDialog("Import & Merge Successful", `Processed backup sheet. Added ${addedCount} new record(s), and updated ${updatedCount} existing record(s) on your local database.`, "check-circle", "emerald");
+                    } else {
+                        window.showCustomDialog("Import Failed", "No valid guidance records found in any sheets.", "alert-triangle", "red");
+                    }
+                } catch (err) {
+                    console.error("Failed to parse Excel backup file.", err);
+                    window.showCustomDialog("Import Failed", "Ensure it is a valid LNHS Excel backup sheet.", "alert-triangle", "red");
+                }
+                event.target.value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        window.approvePendingRecord = async function(docId) {
+            const index = window.registryDatabase.findIndex(doc => doc.id === docId);
+            if (index !== -1) {
+                window.registryDatabase[index].status = 'approved';
+                window.saveToLocalDrive();
+
+                if (window.useFirebase && navigator.onLine && window.currentFirebaseUser) {
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'lnhs-guidance-app';
+                    try {
+                        await window.db.collection('artifacts').doc(appId)
+                            .collection('public').doc('data')
+                            .collection('guidance_records').doc(docId).set(window.registryDatabase[index]);
+                    } catch (e) {
+                        console.error("Online approval upload failed:", e);
+                    }
+                }
+
+                window.renderRegistry();
+                window.showCustomDialog("Submission Approved!", "The student profile has been permanently verified and saved in your registry database.", "check-circle", "emerald");
+            }
+        };
+
+        window.rejectPendingRecord = async function(docId) {
+            const index = window.registryDatabase.findIndex(doc => doc.id === docId);
+            if (index !== -1) {
+                window.registryDatabase.splice(index, 1);
+                window.saveToLocalDrive();
+
+                if (window.useFirebase && navigator.onLine && window.currentFirebaseUser) {
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'lnhs-guidance-app';
+                    try {
+                        await window.db.collection('artifacts').doc(appId)
+                            .collection('public').doc('data')
+                            .collection('guidance_records').doc(docId).delete();
+                    } catch (e) {
+                        console.error("Online rejection sync failed:", e);
+                    }
+                }
+
+                window.renderRegistry();
+                window.showCustomDialog("Submission Rejected", "The pending form request has been permanently deleted.", "trash", "red");
+            }
+        };
+
+        window.renderRegistry = function() {
+            const container = document.getElementById('registry-rows');
+            const noRecords = document.getElementById('no-records-msg');
+            container.innerHTML = "";
+
+            const approvedList = window.registryDatabase.filter(doc => doc.status === 'approved' || !doc.status);
+
+            if (approvedList.length === 0) {
+                noRecords.classList.remove('hidden');
+            } else {
+                noRecords.classList.add('hidden');
+            }
+
+            const groups = {
+                "Grade 7": [], "Grade 8": [], "Grade 9": [], "Grade 10": [], "Grade 11": [], "Grade 12": [], "Other / Non-Student Records": []
+            };
+
+            approvedList.forEach((doc) => {
+                const groupKey = window.getGradeGroup(doc);
+                if (groups[groupKey]) {
+                    groups[groupKey].push(doc);
+                } else {
+                    groups["Other / Non-Student Records"].push(doc);
+                }
+            });
+
+            Object.keys(groups).forEach((groupName) => {
+                const items = groups[groupName];
+                if (items.length === 0) return; 
+
+                const headerTr = document.createElement('tr');
+                headerTr.className = "bg-slate-100/95 border-y border-slate-200 font-bold text-slate-800 text-xs uppercase tracking-wider no-print font-sans";
+                headerTr.innerHTML = `
+                    <td colspan="6" class="px-4 py-2 flex items-center gap-1.5 font-sans">
+                        <span class="w-2 h-2 rounded-full bg-blue-700"></span>
+                        ${groupName} (${items.length} verified record${items.length > 1 ? 's' : ''})
+                    </td>
+                `;
+                container.appendChild(headerTr);
+
+                items.forEach((doc) => {
+                    const originalIndex = window.registryDatabase.findIndex(originalDoc => originalDoc.id === doc.id);
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50/70 transition-colors font-sans";
+
+                    let docTypeBadge = "";
+                    let nameVal = doc.name || "N/A";
+                    let identVal = "";
+                    let tags = "";
+                    let synops = "";
+
+                    if (doc.type === 'inventory') {
+                        docTypeBadge = `<span class="px-2 py-0.5 bg-blue-100 text-blue-900 text-[10px] font-bold rounded">Student Profile</span>`;
+                        identVal = `<div class="text-xs font-mono">${doc.lrn || "N/A"}</div><div class="text-[10px] text-slate-400">Inventory Form</div>`;
+                        let customTags = `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-800 text-[9px] font-semibold rounded mr-1">${doc.classification}</span>`;
+                        if (doc.disability) customTags += `<span class="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[9px] font-semibold rounded mr-1">PWD</span>`;
+                        if (doc.ip) customTags += `<span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-semibold rounded mr-1">IP</span>`;
+                        if (doc.muslim) customTags += `<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-semibold rounded">ALIVE</span>`;
+                        tags = customTags;
+                        synops = `Father/Guardian: ${doc.guardian || 'N/A'} • Aspiration: ${doc.aspiration || 'N/A'}`;
+                    } 
+                    else if (doc.type === 'referral') {
+                        docTypeBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded">Intake Referral</span>`;
+                        identVal = `<div class="text-xs font-semibold text-slate-800">${doc.grade || 'N/A'}</div><div class="text-[10px] text-slate-400">Teacher Referral Slip</div>`;
+                        tags = `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-800 text-[9px] font-bold rounded">${doc.reason}</span>`;
+                        synops = `Referred by: ${doc.referredBy || 'N/A'} (${doc.relationship || 'N/A'}) - "${doc.synopsis}"`;
+                    } 
+                    else if (doc.type === 'incident') {
+                        docTypeBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-955 text-[10px] font-bold rounded">Incident Report</span>`;
+                        identVal = `<div class="text-xs font-mono">${doc.date ? doc.date.split('T')[0] : 'N/A'}</div><div class="text-[10px] text-slate-400">Child Protection Complaint</div>`;
+                        tags = `<span class="px-1.5 py-0.5 bg-red-50 text-red-800 text-[9px] font-bold rounded">${doc.incidentType}</span>`;
+                        synops = `Reporter: ${doc.reporter || 'N/A'} • Resolution: "${doc.incResolution || 'None logged.'}"`;
+                    } 
+                    else if (doc.type === 'evaluation') {
+                        docTypeBadge = `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 text-[10px] font-bold rounded">Program Feedback</span>`;
+                        identVal = `<div class="text-xs font-semibold text-slate-800">${doc.grade || 'Evaluator'}</div><div class="text-[10px] text-slate-400">Eoy Service Survey</div>`;
+                        tags = `<span class="px-1.5 py-0.5 bg-indigo-50 text-indigo-800 text-[9px] font-bold rounded">${doc.reason}</span>`;
+                        synops = `"${doc.synopsis}"`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="p-4">${docTypeBadge}</td>
+                        <td class="p-4 font-semibold text-slate-900">${nameVal}</td>
+                        <td class="p-4">${identVal}</td>
+                        <td class="p-4 flex flex-wrap gap-1 items-center">${tags}</td>
+                        <td class="p-4 text-xs text-slate-600 max-w-xs truncate">${synops}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="window.loadFormFromRegistry(${originalIndex})" class="text-xs font-bold text-blue-600 hover:text-blue-900 mr-3">View/Print</button>
+                            <button onclick="window.deleteFromRegistry(${originalIndex})" class="text-xs font-bold text-red-500 hover:text-red-800">Delete</button>
+                        </td>
+                    `;
+                    container.appendChild(tr);
+                });
+            });
+
+            const pendingQueueSection = document.getElementById('pending-queue-section');
+            const pendingRows = document.getElementById('pending-rows');
+            const pendingCountBadge = document.getElementById('pending-count');
+
+            if (!pendingQueueSection || !pendingRows || !pendingCountBadge) return;
+
+            pendingRows.innerHTML = "";
+            const pendingList = window.registryDatabase.filter(doc => doc.status === 'pending');
+
+            if (window.currentRole === 'admin') {
+                pendingQueueSection.classList.remove('hidden');
+                pendingCountBadge.innerText = pendingList.length;
+
+                if (pendingList.length > 0) {
+                    pendingList.forEach((doc) => {
+                        const originalIndex = window.registryDatabase.findIndex(originalDoc => doc.id === originalDoc.id);
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-amber-100/30 transition-colors font-sans";
+
+                        let typeLabel = "";
+                        let details = "";
+                        let tagLabel = "";
+
+                        if (doc.type === 'inventory') {
+                            typeLabel = `<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full">Form A</span>`;
+                            details = `<div class="text-xs font-semibold text-slate-900">LRN: ${doc.lrn || 'N/A'}</div><div class="text-[10px] text-slate-500">${doc.grade} - ${doc.section}</div>`;
+                            tagLabel = `<span class="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] font-bold rounded">New Student Profile</span>`;
+                        } else if (doc.type === 'referral') {
+                            typeLabel = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full">Form B</span>`;
+                            details = `<div class="text-xs font-semibold text-slate-900">Adviser: ${doc.referredBy || 'N/A'}</div><div class="text-[10px] text-slate-500">${doc.grade}</div>`;
+                            tagLabel = `<span class="px-2 py-0.5 bg-amber-200/50 text-amber-800 text-[9px] font-bold rounded">${doc.reason}</span>`;
+                        } else if (doc.type === 'incident') {
+                            typeLabel = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded-full">Form C</span>`;
+                            details = `<div class="text-xs font-semibold text-slate-900">Accused: ${doc.perpetrator || 'N/A'}</div><div class="text-[10px] text-slate-500">${doc.date ? doc.date.replace("T", " ") : 'N/A'}</div>`;
+                            tagLabel = `<span class="px-2 py-0.5 bg-red-200/50 text-red-800 text-[9px] font-bold rounded">${doc.incidentType}</span>`;
+                        } else {
+                            typeLabel = `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-bold rounded-full">Form D</span>`;
+                            details = `<div class="text-xs font-semibold text-slate-900">${doc.grade || 'Evaluator'}</div>`;
+                            tagLabel = `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[9px] font-bold rounded">Program Survey</span>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td class="p-3">${typeLabel}</td>
+                            <td class="p-3 font-bold text-slate-800">${doc.name || 'Anonymous'}</td>
+                            <td class="p-3">${details}</td>
+                            <td class="p-3">${tagLabel}</td>
+                            <td class="p-3 text-right flex gap-1.5 justify-end">
+                                <button onclick="window.loadFormFromRegistry(${originalIndex})" class="py-1 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded transition-colors">Review</button>
+                                <button onclick="window.approvePendingRecord('${doc.id}')" class="py-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors">Approve</button>
+                                <button onclick="window.rejectPendingRecord('${doc.id}')" class="py-1 px-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded transition-colors">Reject</button>
+                            </td>
+                        `;
+                        pendingRows.appendChild(tr);
+                    });
+                } else {
+                    pendingRows.innerHTML = `<tr><td colspan="5" class="p-5 text-center text-amber-800/60 text-xs font-semibold font-sans">No pending records to review at the moment.</td></tr>`;
+                }
+            } else {
+                pendingQueueSection.classList.add('hidden');
+            }
+        };
+
+        window.deleteFromRegistry = function(index) {
+            try {
+                window.registryDatabase.splice(index, 1);
+                window.saveToLocalDrive();
+                window.renderRegistry();
+                window.showCustomDialog("Record Deleted", "Document permanently deleted from local drive storage.", "trash", "red");
+            } catch (err) {
+                console.error("Delete failed: ", err);
+                window.showCustomDialog("Delete Failed", "Could not remove record from disk.", "alert-triangle", "red");
+            }
+        };
+
+        window.clearRegistry = function() {
+            try {
+                window.registryDatabase = [];
+                window.saveToLocalDrive();
+                window.renderRegistry();
+                window.showCustomDialog("Database Cleared", "All records deleted from Local Storage successfully.", "trash", "red");
+            } catch (err) {
+                console.error("Wipe failed: ", err);
+                window.showCustomDialog("Wipe Failed", "An error occurred while wiping database.", "alert-triangle", "red");
+            }
+        };
+
+        window.loadFormFromRegistry = function(index) {
+            const doc = window.registryDatabase[index];
+            document.getElementById('form-selector').value = doc.type;
+            window.changeActiveForm(); 
+            window.selectedDocId = doc.id;
+
+            if (doc.type === 'inventory') {
+                document.getElementById('input-fullname').value = doc.name || "";
+                document.getElementById('input-lrn').value = doc.lrn !== "WALA" ? doc.lrn : "";
+                document.getElementById('input-grade').value = doc.grade !== "Grade Level" ? doc.grade : "";
+                document.getElementById('input-section').value = doc.section !== "Section" ? doc.section : "";
+                document.getElementById('input-dob').value = doc.dob !== "N/A" ? doc.dob : "";
+                document.getElementById('input-sex').value = doc.sex !== "N/A" ? doc.sex : "";
+                document.getElementById('input-status').value = doc.classification !== "N/A" ? doc.classification : "";
+                document.getElementById('input-disability').checked = doc.disability || false;
+                document.getElementById('input-ip').checked = doc.ip || false;
+                document.getElementById('input-muslim').checked = doc.muslim || false;
+                document.getElementById('input-father').value = doc.father !== "N/A" ? doc.father : "";
+                document.getElementById('input-mother').value = doc.mother !== "N/A" ? doc.mother : "";
+                document.getElementById('input-guardian').value = doc.guardian !== "N/A" ? doc.guardian : "";
+                document.getElementById('input-contact').value = doc.contact !== "N/A" ? doc.contact : "";
+                document.getElementById('input-living').value = doc.living !== "N/A" ? doc.living : "";
+                document.getElementById('input-income-source').value = doc.source !== "N/A" ? doc.source : "";
+                document.getElementById('input-4ps').checked = doc.fourps || false;
+                document.getElementById('input-medical').value = doc.medical !== "None Reported" ? doc.medical : "";
+                document.getElementById('input-allergies').value = doc.allergies !== "None" ? doc.allergies : "";
+                document.getElementById('input-aspiration').value = doc.aspiration !== "N/A" ? doc.aspiration : "";
+                document.getElementById('input-risk-absent').checked = doc.riskAbsent || false;
+                document.getElementById('input-risk-family').checked = doc.riskFamily || false;
+                document.getElementById('input-risk-academic').checked = doc.riskAcademic || false;
+                document.getElementById('input-risk-stress').checked = doc.riskStress || false;
+            } 
+            else if (doc.type === 'referral') {
+                document.getElementById('input-ref-student').value = doc.name || "";
+                document.getElementById('input-ref-gradesec').value = doc.grade !== "Unassigned" ? doc.grade : "";
+                document.getElementById('input-ref-date').value = doc.refDate !== "N/A" ? doc.refDate : "";
+                document.getElementById('input-ref-by').value = doc.referredBy !== "Anonymously" ? doc.referredBy : "";
+                document.getElementById('input-ref-relationship').value = doc.relationship !== "Peer/Adviser" ? doc.relationship : "";
+                document.getElementById('input-ref-reason').value = doc.reason;
+                document.getElementById('input-ref-remarks').value = doc.synopsis !== "No observations registered." ? doc.synopsis : "";
+                document.getElementById('input-ref-prior').value = doc.prior !== "None" ? doc.prior : "";
+                document.getElementById('input-act-interview').checked = doc.actInterview || false;
+                document.getElementById('input-act-parent').checked = doc.actParent || false;
+                document.getElementById('input-act-home').checked = doc.actHome || false;
+                document.getElementById('input-act-referral').checked = doc.actReferral || false;
+                document.getElementById('input-ref-recommendations').value = doc.recommendations !== "None" ? doc.recommendations : "";
+                document.getElementById('input-ref-followup').value = doc.followup || "";
+            } 
+            else if (doc.type === 'incident') {
+                document.getElementById('input-inc-reporter').value = doc.reporter !== "Confidential Reporter" ? doc.reporter : "";
+                const cleanName = doc.name ? doc.name.replace(" (Victim)", "") : "";
+                document.getElementById('input-inc-victim').value = cleanName;
+                document.getElementById('input-inc-perpetrator').value = doc.perpetrator !== "Unnamed Peer" ? doc.perpetrator : "";
+                document.getElementById('input-inc-type').value = doc.incidentType;
+                document.getElementById('input-inc-date').value = doc.date !== "Date Undefined" ? doc.date : "";
+                document.getElementById('input-inc-narrative').value = doc.synopsis !== "No intake description logged." ? doc.synopsis : "";
+                document.getElementById('input-inc-parent').checked = doc.incParent || false;
+                document.getElementById('input-inc-behavioral').checked = doc.incBehavioral || false;
+                document.getElementById('input-inc-wcpc').checked = doc.incWcpc || false;
+                document.getElementById('input-inc-resolution').value = doc.incResolution !== "None" ? doc.incResolution : "";
+            } 
+            else if (doc.type === 'evaluation') {
+                document.getElementById('input-eval-name').value = doc.name !== "Anonymous Evaluator" ? doc.name : "";
+                document.getElementById('input-eval-group').value = doc.grade || "Student";
+                
+                if (doc.reason && String(doc.reason).includes("Q1: ")) {
+                    const parts = String(doc.reason).split(" | Q2: ");
+                    const score1 = parts[0].replace("Rating Quality: Q1: ", "");
+                    const score2 = parts[1];
+                    const drop1 = document.getElementById('input-eval-q1');
+                    for (let i = 0; i < drop1.options.length; i++) {
+                        if (drop1.options[i].value.startsWith(score1)) drop1.selectedIndex = i;
+                    }
+                    const drop2 = document.getElementById('input-eval-q2');
+                    for (let i = 0; i < drop2.options.length; i++) {
+                        if (drop2.options[i].value.startsWith(score2)) drop2.selectedIndex = i;
+                    }
+                }
+                document.getElementById('input-eval-comments').value = doc.synopsis !== "No suggestions provided." ? doc.synopsis : "";
+            }
+
+            window.updateFormOutput();
+            window.switchTab('form');
+            window.showCustomDialog("Document Loaded", `Successfully loaded record. You can now modify and update.`, "check-circle", "emerald");
+        };
+
+        window.switchTab = function(tabId) {
+            document.getElementById('pane-dashboard').classList.add('hidden');
+            document.getElementById('pane-form').classList.add('hidden');
+            document.getElementById('pane-registry').classList.add('hidden');
+
+            document.getElementById('tab-dashboard').className = "py-4 px-2 font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap";
+            document.getElementById('tab-form').className = "py-4 px-2 font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap";
+            document.getElementById('tab-registry').className = "py-4 px-2 font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap";
+
+            document.getElementById(`pane-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).className = "py-4 px-2 font-medium text-blue-600 border-b-2 border-blue-600 flex items-center gap-2 focus:outline-none transition-colors whitespace-nowrap";
+            
+            lucide.createIcons();
+        };
+
+        window.populateActiveFormSample = function() {
+            const formType = document.getElementById('form-selector').value;
+
+            if (formType === 'inventory') {
+                document.getElementById('input-fullname').value = "Macaraya, Khalid Benjamin D.";
+                document.getElementById('input-lrn').value = "109847160912";
+                document.getElementById('input-grade').value = "Grade 11";
+                document.getElementById('input-section').value = "ABM - Mabini";
+                document.getElementById('input-dob').value = "2009-12-05";
+                document.getElementById('input-sex').value = "Male";
+                document.getElementById('input-status').value = "Grade 11";
+                document.getElementById('input-disability').checked = false;
+                document.getElementById('input-ip').checked = true;
+                document.getElementById('input-muslim').checked = true;
+                document.getElementById('input-father').value = "Rizalino M. Macaraya";
+                document.getElementById('input-mother').value = "Teofila D. Macaraya";
+                document.getElementById('input-guardian').value = "N/A";
+                document.getElementById('input-contact').value = "0916-224-8119";
+                document.getElementById('input-living').value = "Living with Both Parents";
+                document.getElementById('input-income-source').value = "Farming & Handcraft Retail";
+                document.getElementById('input-4ps').checked = true;
+                document.getElementById('input-medical').value = "Mild Seasonal Asthma";
+                document.getElementById('input-allergies').value = "Front row seating to minimize chalk dust";
+                document.getElementById('input-aspiration').value = "Agricultural Engineer";
+                document.getElementById('input-risk-absent').checked = false;
+                document.getElementById('input-risk-family').checked = false;
+                document.getElementById('input-risk-academic').checked = false;
+                document.getElementById('input-risk-stress').checked = true;
+
+                window.showCustomDialog("Inventory Sample Loaded", "Khalid's simplified guidance-focused inventory data has been loaded.", "check-circle", "emerald");
+            } 
+            else if (formType === 'referral') {
+                document.getElementById('input-ref-student').value = "Dela Cruz, Juanito K.";
+                document.getElementById('input-ref-gradesec').value = "Grade 7 - Bonifacio";
+                document.getElementById('input-ref-date').value = "2026-06-08";
+                document.getElementById('input-ref-by').value = "Mrs. Leonor Briones";
+                document.getElementById('input-ref-relationship').value = "Class Adviser";
+                document.getElementById('input-ref-reason').value = "Chronic Absenteeism";
+                document.getElementById('input-ref-remarks').value = "Juanito has missed school for the last 6 days. Classmates mention he is assisting on his parents' family farm.";
+                document.getElementById('input-ref-prior').value = "Spoke to student twice; sent a letter to parent on June 5, but no response yet.";
+                document.getElementById('input-act-interview').checked = true;
+                document.getElementById('input-act-parent').checked = true;
+                document.getElementById('input-act-home').checked = false;
+                document.getElementById('input-act-referral').checked = false;
+                document.getElementById('input-ref-recommendations').value = "Establish academic catch-up plan, monitor class logbook daily, scheduled home visitation if absences persist.";
+                document.getElementById('input-ref-followup').value = "2026-06-22";
+
+                window.showCustomDialog("Referral Sample Loaded", "Referral Slip populated with sample teacher report and counselor intake notes.", "check-circle", "emerald");
+            } 
+            else if (formType === 'incident') {
+                document.getElementById('input-inc-reporter').value = "Mrs. Leonor Briones";
+                document.getElementById('input-inc-victim').value = "Sarmiento, Ana Rose";
+                document.getElementById('input-inc-perpetrator').value = "Grade 8 Group Alpha Peers";
+                document.getElementById('input-inc-type').value = "Verbal Defamation / Teasing";
+                document.getElementById('input-inc-date').value = "2026-06-18T13:45";
+                document.getElementById('input-inc-narrative').value = "Repeated instances of name-calling during recess near the school canteen premises related to regional native speech characteristics.";
+                document.getElementById('input-inc-parent').checked = true;
+                document.getElementById('input-inc-behavioral').checked = true;
+                document.getElementById('input-inc-wcpc').checked = false;
+                document.getElementById('input-inc-resolution').value = "Conducted parent intervention meeting on June 19, 2026. Put both parties on weekly behavior contracts.";
+
+                window.showCustomDialog("Incident Sample Loaded", "Child Protection incident fields loaded with mock case files.", "check-circle", "emerald");
+            } 
+            else if (formType === 'evaluation') {
+                document.getElementById('input-eval-name').value = "Dr. Jose Rizal";
+                document.getElementById('input-eval-group').value = "Faculty / Teacher";
+                document.getElementById('input-eval-q1').value = "5 - Outstanding";
+                document.getElementById('input-eval-q2').value = "4 - Very Satisfactory";
+                document.getElementById('input-eval-comments').value = "Excellent organization of psychosocial care. Re-entry activities helped reduce back-to-school student stress significantly.";
+                window.showCustomDialog("Evaluation Sample Loaded", "Program Survey metrics populated with mock teacher assessment.", "check-circle", "emerald");
+            }
+
+            window.updateFormOutput();
+        };
+
+        window.clearActiveForm = function(silent = false) {
+            const formType = document.getElementById('form-selector').value;
+
+            if (formType === 'inventory') {
+                document.getElementById('input-fullname').value = "";
+                document.getElementById('input-lrn').value = "";
+                document.getElementById('input-grade').value = "";
+                document.getElementById('input-section').value = "";
+                document.getElementById('input-dob').value = "";
+                document.getElementById('input-sex').value = "";
+                document.getElementById('input-status').value = "";
+                document.getElementById('input-disability').checked = false;
+                document.getElementById('input-ip').checked = false;
+                document.getElementById('input-muslim').checked = false;
+                document.getElementById('input-father').value = "";
+                document.getElementById('input-mother').value = "";
+                document.getElementById('input-guardian').value = "";
+                document.getElementById('input-contact').value = "";
+                document.getElementById('input-living').value = "";
+                document.getElementById('input-income-source').value = "";
+                document.getElementById('input-4ps').checked = false;
+                document.getElementById('input-medical').value = "";
+                document.getElementById('input-allergies').value = "";
+                document.getElementById('input-aspiration').value = "";
+                document.getElementById('input-risk-absent').checked = false;
+                document.getElementById('input-risk-family').checked = false;
+                document.getElementById('input-risk-academic').checked = false;
+                document.getElementById('input-risk-stress').checked = false;
+            } 
+            else if (formType === 'referral') {
+                document.getElementById('input-ref-student').value = "";
+                document.getElementById('input-ref-gradesec').value = "";
+                document.getElementById('input-ref-date').value = "";
+                document.getElementById('input-ref-by').value = "";
+                document.getElementById('input-ref-relationship').value = "";
+                document.getElementById('input-ref-remarks').value = "";
+                document.getElementById('input-ref-prior').value = "";
+                document.getElementById('input-act-interview').checked = false;
+                document.getElementById('input-act-parent').checked = false;
+                document.getElementById('input-act-home').checked = false;
+                document.getElementById('input-act-referral').checked = false;
+                document.getElementById('input-ref-recommendations').value = "";
+                document.getElementById('input-ref-followup').value = "";
+            } 
+            else if (formType === 'incident') {
+                document.getElementById('input-inc-reporter').value = "";
+                document.getElementById('input-inc-victim').value = "";
+                document.getElementById('input-inc-perpetrator').value = "";
+                document.getElementById('input-inc-date').value = "";
+                document.getElementById('input-inc-narrative').value = "";
+                document.getElementById('input-inc-parent').checked = false;
+                document.getElementById('input-inc-behavioral').checked = false;
+                document.getElementById('input-inc-wcpc').checked = false;
+                document.getElementById('input-inc-resolution').value = "";
+            } 
+            else if (formType === 'evaluation') {
+                document.getElementById('input-eval-name').value = "";
+                document.getElementById('input-eval-comments').value = "";
+            }
+
+            window.updateFormOutput();
+            if (silent !== true) {
+                window.showCustomDialog("Inputs Cleared", "Form set to blank template ready for clean prints.", "info", "blue");
+            }
+        };
+
+        window.showCustomDialog = function(title, text, icon = "check-circle", type = "emerald") {
+            const d = document.getElementById('dialog');
+            document.getElementById('dialog-title').innerText = title;
+            document.getElementById('dialog-body').innerText = text;
+            
+            const iconContainer = document.getElementById('dialog-icon-container');
+            const iconElement = document.getElementById('dialog-icon');
+            
+            iconElement.setAttribute('data-lucide', icon);
+            
+            if (type === "emerald") {
+                iconContainer.className = "p-2 bg-emerald-100 text-emerald-800 rounded-full";
+            } else if (type === "red") {
+                iconContainer.className = "p-2 bg-red-100 text-red-800 rounded-full";
+            } else {
+                iconContainer.className = "p-2 bg-blue-100 text-blue-800 rounded-full";
+            }
+
+            d.classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.closeDialog = function() {
+            document.getElementById('dialog').classList.add('hidden');
+        };
+
+        window.triggerPrint = function() {
+            window.print();
+        };
+
+        window.selectPortal = function(role) {
+            if (role === 'student') {
+                window.currentRole = 'student'; 
+                document.getElementById('portal-gateway').classList.add('hidden');
+                document.getElementById('admin-nav').classList.add('hidden');
+                document.getElementById('form-selector-container').classList.add('hidden');
+                document.getElementById('form-helper-buttons').classList.add('hidden');
+                document.getElementById('btn-print-form').classList.remove('hidden');
+                document.getElementById('student-excel-controls').classList.remove('hidden');
+                document.getElementById('form-selector').value = 'inventory';
+                window.changeActiveForm();
+                window.switchTab('form');
+                lucide.createIcons();
+            }
+        };
+
+        window.showAdminPasswordInput = function() {
+            document.getElementById('role-selection-view').classList.add('hidden');
+            document.getElementById('admin-auth-view').classList.remove('hidden');
+        };
+
+        window.backToRoleSelector = function() {
+            document.getElementById('admin-auth-view').classList.add('hidden');
+            document.getElementById('role-selection-view').classList.remove('hidden');
+        };
+
+        window.loginAdmin = async function() {
+            const entered = document.getElementById('admin-passkey').value;
+            const storedPassHash = localStorage.getItem(window.ADMIN_PASS_KEY);
+            const enteredHash = await window.hashPassword(entered);
+
+            if (enteredHash === storedPassHash) {
+                window.currentRole = 'admin'; 
+                document.getElementById('portal-gateway').classList.add('hidden');
+                document.getElementById('admin-nav').classList.remove('hidden');
+                document.getElementById('form-selector-container').classList.remove('hidden');
+                document.getElementById('form-helper-buttons').classList.remove('hidden');
+                document.getElementById('btn-print-form').classList.remove('hidden');
+                document.getElementById('btn-change-password').classList.remove('hidden');
+                document.getElementById('student-excel-controls').classList.add('hidden');
+                
+                document.getElementById('admin-passkey').value = ""; 
+                window.renderRegistry(); // Update UI to show Pending Queue instantly
+                window.switchTab('dashboard');
+                window.showCustomDialog("Admin Unlocked", "Welcome back, Guidance Officer. Full access granted.", "check-circle", "emerald");
+                window.syncFromFirestore(); 
+            } else {
+                window.showCustomDialog("Incorrect Password", "Please try again or contact Junnel Duran Marfil.", "alert-triangle", "red");
+            }
+        };
+
+        window.logout = function() {
+            window.currentRole = 'student'; 
+            document.getElementById('admin-auth-view').classList.add('hidden');
+            document.getElementById('role-selection-view').classList.remove('hidden');
+            document.getElementById('portal-gateway').classList.remove('hidden');
+            document.getElementById('btn-change-password').classList.add('hidden');
+            document.getElementById('student-excel-controls').classList.add('hidden');
+            window.renderRegistry(); // Update UI to hide Pending Queue instantly
+            window.clearActiveForm(true);
+        };
+
+        window.forgotPassword = function() {
+            const e1 = "junnel.marfil";
+            const e2 = "deped.gov.ph";
+            window.showCustomDialog("Password Reset", `To reset your password, please contact our system administrator Junnel Duran Marfil at ${e1}@${e2} or text/call 09913022162.`, "mail", "blue");
+        };
+
+        window.openChangePasswordModal = function() {
+            document.getElementById('change-pass-current').value = '';
+            document.getElementById('change-pass-new').value = '';
+            document.getElementById('change-pass-confirm').value = '';
+            document.getElementById('change-password-modal').classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.closeChangePasswordModal = function() {
+            document.getElementById('change-password-modal').classList.add('hidden');
+        };
+
+        window.submitChangePassword = async function() {
+            const current = document.getElementById('change-pass-current').value;
+            const newPass = document.getElementById('change-pass-new').value;
+            const confirmPass = document.getElementById('change-pass-confirm').value;
+            
+            const storedPassHash = localStorage.getItem(window.ADMIN_PASS_KEY);
+            const currentHash = await window.hashPassword(current);
+
+            if (currentHash !== storedPassHash) {
+                window.showCustomDialog("Verification Failed", "The current password you entered is incorrect.", "alert-triangle", "red");
+                return;
+            }
+            if (!newPass) {
+                window.showCustomDialog("Input Error", "Please enter a new password.", "alert-triangle", "red");
+                return;
+            }
+            if (newPass.length < 4) {
+                window.showCustomDialog("Input Error", "New password must be at least 4 characters long.", "alert-triangle", "red");
+                return;
+            }
+            if (newPass !== confirmPass) {
+                window.showCustomDialog("Input Error", "The new passwords you entered do not match.", "alert-triangle", "red");
+                return;
+            }
+
+            const newPassHash = await window.hashPassword(newPass);
+            localStorage.setItem(window.ADMIN_PASS_KEY, newPassHash);
+            window.closeChangePasswordModal();
+            window.showCustomDialog("Success", "Administrator password has been securely updated and encrypted.", "check-circle", "emerald");
+        };
+
+        window.togglePasswordVisibility = function(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        };
+
+        // Safer UI Initialization
+        window.initializeAppAndUI = async function() {
+            await window.initDefaultPassword();
+            window.loadFromLocalDrive();
+            await window.initFirebase();
+            lucide.createIcons();
+            window.renderRegistry();
+            window.updateFormOutput();
+        };
+
+        // Network connectivity event handlers
+        window.addEventListener('online', () => {
+            window.updateNetworkStatusBadge();
+            if (window.useFirebase && window.currentFirebaseUser && window.currentRole === 'admin') {
+                window.syncFromFirestore();
+            }
+        });
+        window.addEventListener('offline', () => {
+            window.updateNetworkStatusBadge();
+        });
+
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', window.initializeAppAndUI);
+        } else {
+            window.initializeAppAndUI();
+        }
+
+    </script>
+    
+    <!-- Client UX Locks -->
+    <script>
+        // Disable Right-Click
+        document.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+
+        // Disable specific keyboard shortcuts used for Developer Tools
+        document.onkeydown = function(e) {
+            if (e.keyCode === 123) { return false; } // F12
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { return false; } // Ctrl+Shift+I
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 67) { return false; } // Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 74) { return false; } // Ctrl+Shift+J
+            if (e.ctrlKey && e.keyCode === 85) { return false; } // Ctrl+U
+        };
+
+        // DevTools Trap: Delayed by 5 seconds to ensure UI initialization finishes without ReferenceErrors
+        setTimeout(function() {
+            setInterval(function() {
+                var start = performance.now();
+                debugger; // Pauses execution ONLY if DevTools is open
+                var end = performance.now();
+                if (end - start > 100) {
+                    document.body.innerHTML = "<div style='display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; font-family:sans-serif;'><h1 style='color:red;'>Security Alert</h1><p>Developer Tools are not permitted.</p></div>";
+                }
+            }, 1000);
+        }, 5000);
+    </script>
+
+</body>
+</html>
